@@ -1,0 +1,28 @@
+{
+  "agent": "genmedia",
+  "agent_module": "genmedia_agent.agent",
+  "agent_variable": "genmedia_agent",
+  "whl_file_path": "genmedia_agent/dist/genmedia_agent-3.20251118.1-py3-none-any.whl",
+  "deployment_environment": "dev",
+  "gcs_bucket_deployment_location": "us-central1",
+  "agent_description": "A creative agent for generating images and videos.",
+  "agent_display_name": "GenMedia Agent",
+  "agent_engine_id_to_update": "",
+  "env_vars": {
+    "GOOGLE_CLOUD_PROJECT": "vertex-ai-382806",
+    "GOOGLE_CLOUD_LOCATION": "us-central1",
+    "MODELS_CLOUD_LOCATION": "global",
+    "GOOGLE_CLOUD_BUCKET_ARTIFACTS": "jvidhi-agents",
+    "AGENT_VERSION": "3.20251118.1",
+    "LLM_GEMINI_MODEL_GENMEDIA": "gemini-1.5-pro-002",
+    "IMAGE_GENERATION_MODEL": "imagen-3.0-generate-001",
+    "IMAGE_EDITION_MODEL": "gemini-1.5-pro-002",
+    "VIDEO_GENERATION_MODEL": "veo-001",
+    "MAX_NUMBER_OF_IMAGES": "4",
+    "IMAGE_DEFAULT_ASPECT_RATIO": "1:1",
+    "NUMBER_OF_STORYBOARD_SCENES": "4",
+    "VIDEO_DEFAULT_ASPECT_RATIO": "16:9",
+    "VIDEO_DEFAULT_RESOLUTION": "1080p",
+    "VIDEO_DEFAULT_DURATION": "6"
+  }
+}

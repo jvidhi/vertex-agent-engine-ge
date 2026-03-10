@@ -1,0 +1,12 @@
+SCENE_IMAGE_FILENAME_PREFIX = "scene_image"
+SCENE_VIDEO_FILENAME_PREFIX = "scene_video"
+VIDEO_MIMETYPE = "video/mp4"
+IMAGE_MIMETYPE = "image/png"
+AUDIO_MIMETYPE = "audio/wav"
+
+STATE_KEY_PRODUCT_IMAGE_URL = "product_image_url"
+STATE_KEY_PRODUCT_NAME = "product_name"
+STATE_KEY_LOGO_IMAGE_URL = "logo_image_url"
+STATE_KEY_MAIN_CHARACTER_URL = "main_character_url"
+STATE_KEY_ASSET_SHEET_URL = "asset_sheet_url"
+STATE_KEY_BRAND_CONTEXT_PAYLOAD = "brand_context_payload"

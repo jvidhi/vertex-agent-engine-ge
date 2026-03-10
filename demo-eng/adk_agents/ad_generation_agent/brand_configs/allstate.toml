@@ -1,0 +1,40 @@
+brand_name = "allstate"
+logo_image_url = "https://storage.cloud.google.com/allstate_demo_20251205/Allstate-logo.jpg"
+main_character_url = "https://storage.cloud.google.com/allstate_demo_20251205/tom.png"
+
+brand_guidelines = """
+### 1. Brand Identity & Purpose
+*   **Core Promise:** To protect people from life's uncertainties, prepare them for the future, and provide unwavering support when things go wrong.
+*   **Brand Attributes:** Reliable, protective, caring, stable, and authoritative. 
+*   **Tagline:** *"You're in good hands with Allstate."*® (Often followed up by the famous prompt: *"Are you in good hands?"*)
+
+### 2. The Logo ("The Good Hands")
+Allstate’s visual identity is heavily anchored by one of the most recognized corporate symbols in the United States.
+*   **The Emblem:** The iconic "Good Hands" symbol features two cupped hands, representing care, support, and protection. In modern iterations (post-2017), the hands are typically depicted in white inside a dark blue oval or circle.
+*   **The Wordmark:** Allstate uses a custom, humanist sans-serif typeface for its name. Its most distinct feature is the capital "A"—the right stem is perfectly vertical, while the left stem is diagonal, adding a subtle dynamic energy to an otherwise stable logo. 
+
+### 3. Color Palette
+Allstate’s color palette is designed to evoke trust and security while remaining digitally friendly and modern.
+*   **Primary Colors:**
+    *   **Midnight / Dark Blue** (Hex: `#0E1941` or `#0033A0`): The core brand color. It conveys safety, reliability, and fundamental corporate stability.
+    *   **White** (Hex: `#FFFFFF`): Used heavily for the "Good Hands" emblem, typography on dark backgrounds, and clean negative space.
+*   **Secondary / Accent Colors:**
+    *   **Turquoise / Light Blue** (Hex: `#44BCE5`): Adds a modern, approachable, and digital-first pop of color. 
+    *   **Coral / Burnt Sienna** (Hex: `#ED7766`): A warm, energetic accent color often used sparingly for highlights, alerts, or calls-to-action (CTAs).
+    *   **Dark Slate** (Hex: `#2F3847`): Used primarily for digital text, UI elements, and grounding visual weight.
+
+### 4. Typography
+*   **Brand Typeface:** Allstate uses clean, highly legible sans-serif fonts to appear confident and modern. Their custom logotype is structurally similar to fonts like *FF Real Head Pro*, but customized for a friendlier, bubblier geometry (especially in the lowercase "a" and "t").
+*   **Digital Applications:** For web and app design, they rely on highly accessible, straightforward sans-serif web fonts to ensure clarity, especially during stressful user experiences (like filing an insurance claim).
+
+### 5. Brand Voice & Tone
+Allstate employs a brilliant "dual-personality" strategy in its communications to cover both the problem and the solution:
+*   **The "Good Hands" Persona (The Reassurer):** Famously voiced by actor Dennis Haysbert. This tone is warm, deeply reassuring, authoritative, and calm. It speaks to legacy, safety, and being the ultimate safety net. 
+*   **The "Mayhem" Persona (The Agitator):** Famously portrayed by actor Dean Winters. This tone is humorous, chaotic, cynical, and edgy. It exists to bluntly remind consumers of the unpredictable risks in life, thereby creating the *need* for the reassuring "Good Hands."
+*   **General Copywriting:** Across its website and digital products, the voice is jargon-free, straightforward, empathetic, and focused on quick resolutions. 
+
+### 6. Imagery & Photography
+*   **Style:** Authentic, relatable slices of everyday life. 
+*   **Subject Matter:** Real people (families, homeowners, drivers) navigating both the joys of life (buying a new home, getting a new car) and the stresses of life (fender benders, storm damage). 
+*   **Vibe:** The photography leans heavily on human connection, resilience, and the emotional relief of being protected.
+"""

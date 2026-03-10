@@ -1,0 +1,31 @@
+[project]
+name = "adk-agents-workspace"
+version = "0.1.0"
+requires-python = "==3.13.*"
+dependencies = [
+    "adk_common",
+    "ad_generation_agent",
+    "marketing_orchestrator",
+    "marketing_plan_agent",
+    "genmedia_agent",
+    "nrf_marketing_analyst_agent",
+]
+
+[tool.uv.workspace]
+members = [
+    "adk_common",
+    "marketing_orchestrator",
+    "ad_generation_agent",
+    "marketing_plan_agent",
+    "genmedia_agent",
+    "nrf_marketing_analyst_agent",
+    # Add other agents as needed
+]
+
+[tool.uv.sources]
+adk_common = { workspace = true }
+ad_generation_agent = { workspace = true }
+marketing_plan_agent = { workspace = true }
+genmedia_agent = { workspace = true }
+marketing_orchestrator = { workspace = true }
+nrf_marketing_analyst_agent = { workspace = true }

@@ -1,0 +1,13 @@
+brand_name = "Example Brand"
+product_image_url = "gs://your-bucket-name/path/to/product.png"
+logo_image_url = "gs://your-bucket-name/path/to/logo.png"
+main_character_url = "gs://your-bucket-name/path/to/character.png"
+asset_sheet_url = "gs://your-bucket-name/path/to/asset_sheet.png"
+
+brand_guidelines = """
+Brand Voice: Empathetic, energetic, professional.
+Visual Identity: Modern, clean lines, high contrast.
+Core Values: Sustainability and Accessibility.
+Color Palette: Primary Navy Blue #000080.
+Typography: Inter, bold for headers.
+"""
