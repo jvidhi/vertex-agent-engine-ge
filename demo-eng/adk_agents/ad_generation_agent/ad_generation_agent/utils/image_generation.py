@@ -113,14 +113,6 @@ SAFETY_SETTINGS = [
     ),
 ]
 
-GENERATE_CONTENT_CONFIG = types.GenerateContentConfig(
-    safety_settings=SAFETY_SETTINGS,
-    image_config=types.ImageConfig(
-        aspect_ratio=get_image_default_aspect_ratio(),
-    ),
-    response_modalities=["IMAGE"],
-)
-
 def _log_env_vars():
     log_message(f"DEBUG_ENV: GOOGLE_CLOUD_PROJECT={os.environ.get('GOOGLE_CLOUD_PROJECT')}", Severity.DEBUG)
     log_message(f"DEBUG_ENV: GOOGLE_CLOUD_LOCATION={os.environ.get('GOOGLE_CLOUD_LOCATION')}", Severity.DEBUG)
@@ -138,6 +130,7 @@ async def generate_and_select_best_image(
     tool_context: Any = None,
     log_prefix: str = "Image",
     input_image_descriptions: Optional[List[str]] = None,
+    aspect_ratio: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Generates a single image using Gemini, handling retries for errors or low evaluation scores.
 
@@ -198,7 +191,8 @@ async def generate_and_select_best_image(
                     contents=contents,
                     max_retries=get_image_generation_tenacity_attempts(),
                     retry_delay_min=1.0,
-                    retry_delay_max=max(1.0, get_image_generation_retry_delay_seconds())
+                    retry_delay_max=max(1.0, get_image_generation_retry_delay_seconds()),
+                    aspect_ratio=aspect_ratio,
                 )
             if extracted:
                 result_bytes = extracted[0][0]

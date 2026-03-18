@@ -1,0 +1,60 @@
+brand_name = "Vantus"
+logo_image_url = "https://storage.cloud.google.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_logo.png"
+brand_guidelines = """
+# VANTUS | Brand Guideline Document (v1.0)
+
+## 1. Brand Overview
+VANTUS exists at the intersection of high-performance athletics, rugged durability, and essential comfort. We do not believe in "gym clothes" versus "real clothes." We believe in gear that supports the capable individual through every phase of their day—from the squat rack to the job site, the track to the commute.
+
+## 2. Brand Purpose (The "Why")
+**To equip life's momentum.** We provide the necessary tools for individuals who demand that their gear works as hard and as adaptably as they do.
+
+## 3. Core Pillars
+*   **Versatile Performance:** Gear that doesn't force you to change clothes between activities. It must perform in the gym and look appropriate on the street.
+*   **Engineered Durability:** We prioritize longevity over fast fashion. Our materials are tested to withstand friction, tension, and wear.
+*   **Grounded Confidence:** We are not about hype or impossible standards. We are about quiet competence and the confidence that comes from being prepared.
+
+## 4. Brand Voice & Tone
+The Vantus voice is **Assertive, Grounded, and Encouraging.**
+
+*   **We sound like:** A seasoned coach or a trusted project lead. We speak in declaratives. We are direct.
+*   **We do NOT sound like:** A hype-man (too loud), a pure heritage brand (too nostalgic), or a discounter (too cheap).
+
+Here is a guide for acceptable and unacceptable language:
+
+| Do Say | Don't Say |
+|---|---|
+| "Built for the work." | "Be a beast mode warrior!" |
+| "Engineered for movement." | "Super-flex technology!" |
+| "Ready when you are." | "Get it before it's gone!" |
+| "Forged for the commute." | "Perfect for brunch vibes." |
+
+## 5. Visual Identity Basics
+
+### The Logo
+The "Inverted Chevron V" must always point upward and forward. It represents upward mobility and forward momentum.
+
+### Lighting Style
+"Atmospheric Industrial." Think shafts of natural light cutting through a dusty workshop or the cool, blue-hour light of an early morning urban run. High contrast to highlight textures.
+
+### Primary Color Palette
+A list of Vantus's primary color palette:
+*   **Vantus Charcoal (#2C2C2C):** Grounding, strength, industrial.
+*   **Electric Slate (#4A6FA5):** Performance, clarity, air.
+*   **Ignition Orange (#FF6B00):** Energy, action, the "spark" (used sparingly for accents).
+"""
+
+[[products]]
+product_name = "Catalyst Shoes"
+product_image_url = "https://storage.cloud.google.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_catalyst_profiles.png"
+product_guidelines = "Focus on the shoes being worn by a person in motion, either running or walking."
+
+[[products]]
+product_name = "Vantus Sweater"
+product_image_url = "https://storage.cloud.google.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_sweater.png"
+product_guidelines = "Focus on the sweater's versatile performance, showing a comfortable transition from active movement to casual wear. Highlight the engineered durability of the fabric."
+
+[[products]]
+product_name = "Vantus Jeans"
+product_image_url = "https://storage.cloud.google.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_jeans.png"
+product_guidelines = "Emphasize rugged durability and flexibility. Showcase the jeans in an active, demanding environment like a job site or urban commute, focusing on freedom of movement."

@@ -19,12 +19,13 @@ import traceback
 from typing import Optional, Dict, Any
 from google.adk.tools.tool_context import ToolContext
 from adk_common.utils.constants import get_required_env_var
-from adk_common.utils.utils_logging import log_message, Severity
+from adk_common.utils.utils_logging import log_message, Severity, log_function_call
 from adk_common.utils import utils_gcs
 from adk_common.dtos.agent_tool_response import AgentToolResponse, Status
 from ad_generation_agent.utils import ad_generation_constants
 
-def retrieve_brand_identity(company_name: str, tool_context: ToolContext) -> dict[str, Any]:
+@log_function_call
+def retrieve_brand_identity(company_name: str, tool_context: ToolContext, product_name: Optional[str] = None) -> dict[str, Any]:
     """Retrieves brand guidelines, visual style, and exact asset URLs from a structured catalog configuration.
     
     Args:
@@ -78,11 +79,38 @@ def retrieve_brand_identity(company_name: str, tool_context: ToolContext) -> dic
             
             log_message(f"Match found: {matched_config['brand_name']}", Severity.INFO)
             
+            # --- PRODUCT MATCHING LOGIC ---
+            if product_name and "products" in matched_config and isinstance(matched_config["products"], list):
+                product_list = matched_config["products"]
+                available_products = [p.get("product_name", "") for p in product_list if "product_name" in p]
+                log_message(f"Searching for product '{product_name}' among: {available_products}", Severity.INFO)
+                
+                product_matches = difflib.get_close_matches(
+                    product_name.lower(),
+                    [p.lower() for p in available_products],
+                    n=1,
+                    cutoff=0.6
+                )
+                
+                if product_matches:
+                    matched_prod_name_lower = product_matches[0]
+                    matched_product = next(p for p in product_list if p.get("product_name", "").lower() == matched_prod_name_lower)
+                    log_message(f"Product match found: {matched_product.get('product_name')}", Severity.INFO)
+                    
+                    # Merge product specific fields into the top-level config
+                    for k, v in matched_product.items():
+                        matched_config[k] = v
+                else:
+                    log_message(f"No match found for product '{product_name}'. Proceeding with brand-level data only.", Severity.WARNING)
+            
             # Save the payload into state for prompt injection on the next turn
             tool_context.state[ad_generation_constants.STATE_KEY_BRAND_CONTEXT_PAYLOAD] = matched_config
             
             from adk_common.utils.utils_state import save_state_property
-            from adk_common.utils.utils_agents import check_asset_exists
+            from adk_common.utils.utils_agents import check_asset_exists, store_inline_artifact_metadata
+            from adk_common.dtos.generated_media import GeneratedMedia
+            import mimetypes
+            import os
 
             urls_to_validate = {
                 ad_generation_constants.STATE_KEY_PRODUCT_IMAGE_URL: matched_config.get("hero_product_image_reference") or matched_config.get("product_image_url"),
@@ -98,15 +126,43 @@ def retrieve_brand_identity(company_name: str, tool_context: ToolContext) -> dic
                         exists, _ = check_asset_exists(value, set())
                         if exists:
                             save_state_property(tool_context, key, value)
+                            
+                            # Infer mimetype and filename to properly register it in the unified artifact session state
+                            mime_type, _ = mimetypes.guess_type(value)
+                            if not mime_type:
+                                mime_type = "application/octet-stream"
+                            
+                            filename = os.path.basename(value)
+                            if not filename:
+                                filename = f"retrieved_{key}"
+                                
+                            asset_dto = GeneratedMedia(
+                                gcs_uri=value,
+                                filename=filename,
+                                mime_type=mime_type,
+                                description=f"Brand Reference Asset: {key}"
+                            )
+                            # Register this pre-existing canonical asset into the tracking session state
+                            store_inline_artifact_metadata(tool_context, asset_dto)
                         else:
                             log_message(f"Brand config URL for {key} is unreachable or invalid: {value}", Severity.WARNING)
                     except Exception as e:
                         log_message(f"Error checking brand config URL {value} for {key}: {e}", Severity.WARNING)
             
+            # --- CONTEXT OPTIMIZATION ---
+            # Remove the full products array before sending to LLM to save context window
+            if "products" in matched_config:
+                del matched_config["products"]
+            
             config_str = json.dumps(matched_config, indent=2)
+            
+            detail_msg = f"Successfully retrieved brand identity for '{matched_config['brand_name']}'."
+            if product_name and matched_config.get('product_name'):
+                detail_msg += f" Successfully isolated data for product '{matched_config['product_name']}'."
+            
             return AgentToolResponse(
                 status=Status.SUCCESS,
-                detail=f"Successfully retrieved brand identity for '{matched_config['brand_name']}'. The style guidelines and asset URLs have been securely added to your ReadOnly Memory Context. You MUST review them before proceeding.\n\nRetrieved Details:\n{config_str}"
+                detail=f"{detail_msg} The style guidelines and asset URLs have been securely added to your ReadOnly Memory Context. You MUST review them before proceeding.\n\nRetrieved Details:\n{config_str}"
             ).convert_to_agent_response()
             
         else:

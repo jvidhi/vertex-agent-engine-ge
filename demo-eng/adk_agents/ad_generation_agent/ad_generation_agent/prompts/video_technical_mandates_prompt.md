@@ -6,9 +6,9 @@ SPATIAL INTEGRITY: Respect depth layers. Background objects/people MUST NOT pass
 
 CONSISTENCY: Maintain exact character identity, clothing textures, and facial features from the input image. Clothing folds and seams must remain stable and fixed in place during movement. Facial muscles must move naturally with subtle micro-expressions; avoid static, mask-like smiling. Do NOT morph rigid objects (shoes, jewelry, background architecture).
 
-NEGATIVE CONSTRAINTS: morphing, melting, fused fingers, extra digits, claw toes, missing joints, rubbery movement, boiling text, shifting architecture, blending materials, missing shadows, static facial expressions. No cartoon styles (unless requested). No text overlays. No unnatural stretching. No blurry background warping. No jerky camera movements. No clipping (objects passing through each other). No complex footwork.
+NEGATIVE CONSTRAINTS: morphing, melting, fused fingers, extra digits, claw toes, missing joints, rubbery movement, boiling text, shifting architecture, blending materials, missing shadows, static facial expressions. No cartoon styles (unless requested). No text overlays. No unnatural stretching. No blurry background warping. No jerky camera movements. No clipping (objects passing through each other). No complex footwork. No camera cuts. No scene transitions. No editing. No floating text or 2D watermarks. No chained actions. No multi-event sequences. No floating quotes.
 
-{LOGO_INSTRUCTION}
+{{LOGO_INSTRUCTION}}
 
 SCENE ACTION:
-{ENHANCED_DESCRIPTION}
+{{ENHANCED_DESCRIPTION}}

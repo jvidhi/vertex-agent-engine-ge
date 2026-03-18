@@ -27,7 +27,7 @@ from adk_common.dtos.generated_media import GeneratedMedia
 GOOGLE_CLOUD_BUCKET_ARTIFACTS = get_required_env_var("GOOGLE_CLOUD_BUCKET_ARTIFACTS")
 
 
-# @log_function_call
+@log_function_call
 async def retrieve_generated_assets(
     tool_context: ToolContext,
     folder_path: str = ""

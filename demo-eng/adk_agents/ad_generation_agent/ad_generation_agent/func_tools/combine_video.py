@@ -281,6 +281,7 @@ async def _combine_and_upload_video(
         result = {"name": filename}
         if generated_media.gcs_uri:
             result["gcs_uri"] = generated_media.gcs_uri
+            
         return result
     except (OSError, ValueError) as e:
         log_message(f"An error occurred during video combination: {e}", Severity.ERROR)
@@ -290,7 +291,7 @@ async def _combine_and_upload_video(
             clip.close()
 
 
-# @log_function_call
+@log_function_call
 async def combine(
     video_files: List[str],
     audio_file: str,
@@ -337,5 +338,9 @@ async def combine(
 
             return result
     except Exception as e:
-        log_message(f"[combine_response] Error in combine: {e}", Severity.ERROR)
-        raise e
+        error_msg = f"Error in combine: {str(e)}"
+        log_message(f"[combine_response] {error_msg}", Severity.ERROR)
+        return {
+            "error": error_msg,
+            "system_instruction": "Combining videos failed. Gracefully notify the user."
+        }

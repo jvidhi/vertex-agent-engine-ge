@@ -27,7 +27,7 @@ from ad_generation_agent.utils.image_generation import (
 from adk_common.dtos.generated_media import GeneratedMedia
 from adk_common.utils import utils_agents
 from adk_common.utils.constants import get_required_env_var
-from adk_common.utils.utils_logging import (Severity, log_message)
+from adk_common.utils.utils_logging import (Severity, log_message, log_function_call)
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types
 
@@ -46,6 +46,7 @@ async def _create_display_ad_task(
     product_image_uri: str | None = None,
     logo_image_uri: str | None = None,
     main_character_uri: str | None = None,
+    aspect_ratio: str | None = None,
 ) -> Dict[str, Any]:
     """Creates a task for generating a single display ad.
 
@@ -142,43 +143,34 @@ async def _create_display_ad_task(
                 reference_image_parts.append((part))
                 image_descriptions.append(f"REFERENCE: {generated_media.filename}")
 
-    # Construct the specialized Display Ad Prompt
-    final_prompt = f"CONCEPT: \n\n ```text"
-    final_prompt += f"\n\n{prompt_description}"
-    final_prompt += "\n\n```\n\n"
-
-    final_prompt += "\n\n**ROLE**: You are an expert Digital Ad Designer. Create a high-converting Display Ad."
-    
-    final_prompt += f"\n\n**FORMAT**: Aspect Ratio {IMAGE_DEFAULT_ASPECT_RATIO}."
-    
-    final_prompt += "\n\n**COPY REQUIREMENTS**:"
-    final_prompt += "\n* Start with a SHORT, PUNCHY headline or copy directly embedded in the image."
-    final_prompt += "\n* Maximum 5-7 words. Keep text legible, bold, and high-contrast."
-    final_prompt += "\n* Text must be perfectly spelled."
-    
-    final_prompt += "\n\n**BRANDING**:"
-    final_prompt += "\n* The company LOGO must be clearly visible, undistorted, and placed in a standard ad position (e.g., corner or visual center)."
-    final_prompt += "\n* Use the reference images to match the exact Product and Logo look."
-    
-    final_prompt += "\n\n**AESTHETIC**:"
-    final_prompt += "\n* High-end commercial photography or polished digital art."
-    final_prompt += "\n* Lighting must be studio-quality."
-    final_prompt += "\n* This is a FINAL ASSET, not a sketch or storyboard."
-
-    final_prompt += "\n\nAttached references include the Asset Sheet (style guide) and specific product/logo shots; adhere to them strictly."
-    
+    image_context_text = ""
     if image_descriptions:
-        final_prompt += "\n\n**IMAGE CONTEXT**:"
+        image_context_text = "\n**IMAGE CONTEXT**:"
         for desc in image_descriptions:
-            final_prompt += f"\n* {desc}"
+            image_context_text += f"\n* {desc}"
+            
+    # IMPORTANT (FIX): Enforce the default aspect ratio if none is explicitly requested by the agent
+    final_aspect_ratio = aspect_ratio or IMAGE_DEFAULT_ASPECT_RATIO
+
+    from adk_common.utils import utils_prompts
+    final_prompt = utils_prompts.load_prompt_file_from_calling_agent(
+        variables_to_replace={
+            "PROMPT_DESCRIPTION": prompt_description,
+            "ASPECT_RATIO": final_aspect_ratio,
+            "IMAGE_CONTEXT": image_context_text
+        },
+        filename="../prompts/display_ad_generation_prompt.md"
+    )
 
     return await generate_and_select_best_image(
         filename_without_extension=filename_prefix,
         input_images=reference_image_parts,
         prompt=final_prompt,
+        aspect_ratio=final_aspect_ratio,
     )
 
 
+@log_function_call
 async def generate_display_ad(
     prompt: str,
     tool_context: ToolContext,
@@ -190,6 +182,7 @@ async def generate_display_ad(
     asset_sheet_url: str = "",
     reference_images: List[str] | None = None,
     healing_retry_count: int = 0,
+    aspect_ratio: str | None = None,
 ) -> Dict[str, Any]:
     f"""Generates a final, high-quality Display Ad (image) with short copy and branding.
     
@@ -206,6 +199,7 @@ async def generate_display_ad(
         asset_sheet_url (str, optional): The URL of the asset sheet image.
         reference_images (List[str], optional): List of URIs for additional reference images. Defaults to None.
         healing_retry_count (int, optional): The current count of LLM healing attempts for this ad. Defaults to 0.
+        aspect_ratio (str, optional): The desired aspect ratio (e.g., "16:9", "1:1"). If not provided, it falls back to the workspace default (IMAGE_DEFAULT_ASPECT_RATIO).
 
     Returns:
         Dict[str, Any]: A dictionary containing the status and details of the generated ad.
@@ -245,7 +239,10 @@ async def generate_display_ad(
                 "Do NOT guess or hallucinate URLs.\n" 
                 + "\n".join(invalid_urls)
             )
-            raise RuntimeError(error_msg)
+            return {
+                "status": "failed",
+                "detail": error_msg
+            }
 
         save_state_property(tool_context, ad_generation_constants.STATE_KEY_PRODUCT_IMAGE_URL, final_product_uri)
         save_state_property(tool_context, ad_generation_constants.STATE_KEY_PRODUCT_NAME, product_name)
@@ -267,6 +264,7 @@ async def generate_display_ad(
             main_character_uri=main_character_url,
             tool_context=tool_context,
             concept_keywords=concept_keywords,
+            aspect_ratio=aspect_ratio,
         )
 
         if result and result.get("status") == "success" and result.get("image_bytes"):
@@ -311,5 +309,10 @@ async def generate_display_ad(
             return {"status": "failed", "detail": "Display Ad generation failed."}
 
     except Exception as e:
-        log_message(f"Error in generate_display_ad: {e}", Severity.ERROR)
-        raise e
+        error_msg = f"Error in generate_display_ad: {str(e)}"
+        log_message(error_msg, Severity.ERROR)
+        return {
+            "status": "failed", 
+            "detail": error_msg,
+            "system_instruction": "Display Ad generation failed. Do NOT crash. Gracefully inform the user."
+        }

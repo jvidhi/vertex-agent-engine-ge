@@ -221,7 +221,15 @@ async def _generate_voiceover_content(
         The audio content as bytes, or None on failure.
     """
     try:
-        client = texttospeech.TextToSpeechAsyncClient()
+        from google.api_core.client_options import ClientOptions
+        from adk_common.utils.constants import get_required_env_var
+        
+        project_id = get_required_env_var("GOOGLE_CLOUD_PROJECT")
+        
+        # Explicitly pass the quota project to prevent ADC 403 Service Disabled errors
+        client_options = ClientOptions(quota_project_id=project_id)
+        client = texttospeech.TextToSpeechAsyncClient(client_options=client_options)
+        
         synthesis_input = texttospeech.SynthesisInput(text=text, prompt=prompt)
 
         voice = texttospeech.VoiceSelectionParams(
@@ -308,7 +316,7 @@ async def _generate_voiceover(
         raise e
 
 
-# @log_function_call
+@log_function_call
 async def generate_audio_and_voiceover(
     tool_context: ToolContext,
     audio_query: str,
@@ -406,5 +414,9 @@ async def generate_audio_and_voiceover(
         log_message(f"[generate_audio_and_voiceover_response] Response: {response}", Severity.INFO)
         return response
     except Exception as e:
-        log_message(f"Error in generate_audio_and_voiceover: {e}", Severity.ERROR)
-        raise e
+        error_msg = f"Error in generate_audio_and_voiceover: {str(e)}"
+        log_message(error_msg, Severity.ERROR)
+        return {
+            "failures": [error_msg],
+            "system_instruction": "Audio/Voiceover generation failed. Do NOT crash. Tell the user what happened."
+        }

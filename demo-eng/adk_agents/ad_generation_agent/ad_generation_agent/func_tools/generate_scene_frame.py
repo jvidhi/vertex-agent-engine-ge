@@ -56,6 +56,7 @@ async def _create_image_generation_task(
     product_image_uri: str | None = None,
     logo_image_uri: str | None = None,
     main_character_uri: str | None = None,
+    aspect_ratio: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a task for generating a single image.
 
@@ -184,10 +185,11 @@ async def _create_image_generation_task(
         tool_context=tool_context,
         log_prefix=f"Scene {scene_number}",
         input_image_descriptions=image_descriptions,
+        aspect_ratio=aspect_ratio,
     )
 
 
-# @log_function_call
+@log_function_call
 async def generate_scene_frame(
     scene_number: int,
     prompt: str,
@@ -200,6 +202,7 @@ async def generate_scene_frame(
     reference_images: List[str] | None = None,
     is_logo_scene: bool = False,
     healing_retry_count: int = 0,
+    aspect_ratio: Optional[str] = None,
 ) -> Dict[str, Any]:
     f"""Generates a single image for a commercial storyboard based on the provided parameters.
 
@@ -258,7 +261,10 @@ async def generate_scene_frame(
                 "Do NOT guess or hallucinate URLs.\n" 
                 + "\n".join(invalid_urls)
             )
-            raise RuntimeError(error_msg)
+            return {
+                "status": "failed",
+                "detail": error_msg
+            }
 
         save_state_property(tool_context, ad_generation_constants.STATE_KEY_PRODUCT_IMAGE_URL, final_product_uri)
         save_state_property(tool_context, ad_generation_constants.STATE_KEY_PRODUCT_NAME, product_name)
@@ -279,6 +285,7 @@ async def generate_scene_frame(
             product_image_uri=final_product_uri,
             logo_image_uri=final_logo_uri,
             main_character_uri=main_character_url,
+            aspect_ratio=aspect_ratio,
         )
 
         if result and result.get("status") == "success" and result.get("image_bytes"):
@@ -326,5 +333,10 @@ async def generate_scene_frame(
             return response
 
     except Exception as e:
-        log_message(f"Error in generate_image_from_storyline: {e}", Severity.ERROR)
-        raise e
+        error_msg = f"Error in generate_scene_frame: {str(e)}"
+        log_message(error_msg, Severity.ERROR)
+        return {
+            "status": "failed", 
+            "detail": error_msg,
+            "system_instruction": "Scene Frame generation failed. Do NOT crash. Gracefully inform the user."
+        }

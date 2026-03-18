@@ -21,7 +21,7 @@ from google.genai.types import Image as GenImage
 from adk_common.dtos.generated_media import GeneratedMedia
 from adk_common.utils import utils_agents
 from adk_common.utils.constants import get_required_env_var
-from adk_common.utils.utils_logging import Severity, log_message
+from adk_common.utils.utils_logging import Severity, log_function_call, log_message
 
 from google.genai.types import GenerateContentConfig
 from ad_generation_agent.utils.image_generation import get_gemini_client
@@ -31,6 +31,14 @@ from ad_generation_agent.utils.video_generation import (
     generate_single_video,
     generate_single_video_from_ingredients,
 )
+
+import json
+import asyncio
+from typing import Dict, Any, List
+
+from adk_common.utils.utils_logging import Severity, log_message
+from adk_common.utils import utils_agents
+from google.adk.tools.tool_context import ToolContext
 
 VIDEO_GENERATION_CONCURRENCY_LIMIT = int(get_required_env_var("VIDEO_GENERATION_CONCURRENCY_LIMIT"))
 VIDEO_DEFAULT_DURATION = int(get_required_env_var("VIDEO_DEFAULT_DURATION"))
@@ -75,12 +83,14 @@ async def _enhance_prompt_with_llm(
         
         if response.text:
             log_message(f"Enhanced Prompt: {response.text}", Severity.INFO)
-            return response.text
-        return raw_prompt
+            return _construct_technical_prompt(response.text, is_logo_scene)
+            
+        return _construct_technical_prompt(raw_prompt, is_logo_scene)
         
     except Exception as e:
         log_message(f"Prompt enhancement failed, using raw prompt. Error: {e}", Severity.WARNING)
-        return raw_prompt
+        return _construct_technical_prompt(raw_prompt, is_logo_scene)
+
 
 def _construct_technical_prompt(enhanced_description: str, is_logo_scene: bool) -> str:
     """Wraps the enhanced description in a strict technical container to enforce physics and camera mandates."""
@@ -106,7 +116,7 @@ def _construct_technical_prompt(enhanced_description: str, is_logo_scene: bool) 
     return final_prompt
 
 
-# @log_function_call
+@log_function_call
 async def generate_video_from_first_frame(
     scene_number: int,
     prompt: str,
@@ -121,6 +131,7 @@ async def generate_video_from_first_frame(
     asset_sheet_url: str = "",
     reference_images: List[str] | None = None,
     healing_retry_count: int = 0,
+    aspect_ratio: str | None = None,
 ) -> Dict[str, Any]:
     f"""Generates a single video clip based on the provided parameters.
 
@@ -145,6 +156,7 @@ async def generate_video_from_first_frame(
         main_character_url (str, optional): The URL of the main character reference image(s). This can contain multiple character references if needed.
         asset_sheet_url (str, optional): The URL of the asset sheet image.
         reference_images (List[str], optional): List of URIs for additional reference images. Not used directly by the video model but tracked for state.
+        aspect_ratio (str, optional): The target aspect ratio for the generated video (e.g. \"16:9\"). If none, defaults to runtime env.
 
     Returns:
         Dict[str, Any]: A dictionary containing the status and details of the video generation process.
@@ -152,6 +164,14 @@ async def generate_video_from_first_frame(
     from adk_common.utils.utils_state import save_state_property
     from adk_common.utils.utils_agents import check_asset_exists
     from ad_generation_agent.utils import ad_generation_constants
+    from adk_common.dtos.errors import ShowableException
+    
+    if duration_seconds not in [4, 6, 8]:
+        return {
+            "status": "failed",
+            "detail": f"Invalid duration_seconds {duration_seconds} for `generate_video_from_first_frame`. Allowed values are strictly 4, 6, or 8 seconds.",
+            "scene_number": scene_number
+        }
     
     if reference_images is None:
         reference_images = []
@@ -182,7 +202,11 @@ async def generate_video_from_first_frame(
             "Do NOT guess or hallucinate URLs.\n" 
             + "\n".join(invalid_urls)
         )
-        raise RuntimeError(error_msg)
+        return {
+            "status": "failed",
+            "detail": error_msg,
+            "scene_number": scene_number
+        }
 
     save_state_property(tool_context, ad_generation_constants.STATE_KEY_PRODUCT_IMAGE_URL, final_product_uri)
     save_state_property(tool_context, ad_generation_constants.STATE_KEY_PRODUCT_NAME, product_name)
@@ -220,47 +244,44 @@ async def generate_video_from_first_frame(
             
         generated_media.description = "Initial Scene Frame. The video must start EXACTLY from this image and maintain continuous consistency."
         reference_images_list.append(generated_media)
+        # Enforce Veo 3.1 limitations explicitly: 
+        # Only 8-second videos support the `reference_to_video` modality (multiple images).
+        # Any other duration strictly requires the `first_frame_to_video` modality (single image).
+        if duration_seconds == 8:
+            # Priority 2: Asset Sheet
+            if asset_sheet_url and asset_sheet_url.strip() and len(reference_images_list) < 3:
+                asset_sheet_media = await utils_agents.load_resource(source_path=asset_sheet_url.strip(), tool_context=tool_context)
+                if asset_sheet_media and asset_sheet_media.media_bytes:
+                    asset_sheet_media.description = "Master Asset Sheet containing the exact visual style, character, and setting required."
+                    reference_images_list.append(asset_sheet_media)
 
-        # Priority 2: Asset Sheet
-        if asset_sheet_url and asset_sheet_url.strip():
-            asset_sheet_media = await utils_agents.load_resource(source_path=asset_sheet_url.strip(), tool_context=tool_context)
-            if asset_sheet_media and asset_sheet_media.media_bytes:
-                asset_sheet_media.description = "Master Asset Sheet containing the exact visual style, character, and setting required."
-                reference_images_list.append(asset_sheet_media)
+            # Priority 3: Main Character Image
+            if main_character_url and main_character_url.strip() and len(reference_images_list) < 3:
+                char_media = await utils_agents.load_resource(source_path=main_character_url.strip(), tool_context=tool_context)
+                if char_media and char_media.media_bytes:
+                    char_media.description = "Main Character Reference Image. The generated subject must match this exact identity."
+                    reference_images_list.append(char_media)
 
-        # Priority 3: Main Character Image
-        if main_character_url and main_character_url.strip():
-            char_media = await utils_agents.load_resource(source_path=main_character_url.strip(), tool_context=tool_context)
-            if char_media and char_media.media_bytes:
-                char_media.description = "Main Character Reference Image. The generated subject must match this exact identity."
-                reference_images_list.append(char_media)
+            # Priority 4: Product Image
+            if final_product_uri and len(reference_images_list) < 3:
+                product_media = await utils_agents.load_resource(source_path=final_product_uri, tool_context=tool_context)
+                if product_media and product_media.media_bytes:
+                    product_media.description = "Canonical Product Image. The video must feature this exact product without distortion."
+                    reference_images_list.append(product_media)
 
-        # Priority 4: Product Image
-        if final_product_uri:
-            product_media = await utils_agents.load_resource(source_path=final_product_uri, tool_context=tool_context)
-            if product_media and product_media.media_bytes:
-                product_media.description = "Canonical Product Image. The video must feature this exact product without distortion."
-                reference_images_list.append(product_media)
+            # Priority 5: Logo Image
+            if final_logo_uri and len(reference_images_list) < 3:
+                logo_media = await utils_agents.load_resource(source_path=final_logo_uri, tool_context=tool_context)
+                if logo_media and logo_media.media_bytes:
+                    logo_media.description = "Brand Logo. Ensure the logo is completely intact and never morphs."
+                    reference_images_list.append(logo_media)
 
-        # Priority 5: Logo Image
-        if final_logo_uri:
-            logo_media = await utils_agents.load_resource(source_path=final_logo_uri, tool_context=tool_context)
-            if logo_media and logo_media.media_bytes:
-                logo_media.description = "Brand Logo. Ensure the logo is completely intact and never morphs."
-                reference_images_list.append(logo_media)
-
-        # Prompt step 1: Enhance the prompt using LLM (Director's Treatment)
-        llm_enhanced_description = await _enhance_prompt_with_llm(
+        # Prompt step: Enhance the prompt using LLM (Director's Treatment) and technical constraints
+        final_prompt = await _enhance_prompt_with_llm(
                 prompt, 
                 is_logo_scene, 
                 tool_context
             )
-
-        # Prompt step 2: Wrap in technical mandates
-        final_prompt = _construct_technical_prompt(
-            llm_enhanced_description, 
-            is_logo_scene
-        )
         
         log_message(f"Calling VEO with prompt: {final_prompt}", Severity.DEBUG)
             
@@ -272,13 +293,13 @@ async def generate_video_from_first_frame(
             is_logo_scene=is_logo_scene,
             scene_number=scene_number,
             reference_images=reference_images_list,
+            aspect_ratio=aspect_ratio,
         )
 
         video_result, error_msg = await generate_single_video(
             video_input=video_input,
             tool_context=tool_context,
             video_semaphore=video_semaphore,
-            prompt_enhancer=_enhance_prompt_with_llm,
         )
 
 
@@ -331,20 +352,7 @@ async def generate_video_from_first_frame(
         return response
 
 
-# ==========================================
-# UNIFIED VIDEO GENERATION TOOLS
-# ==========================================
-
-import json
-import asyncio
-from typing import Dict, Any, List
-
-from adk_common.utils.utils_logging import Severity, log_message
-from adk_common.utils import utils_agents
-from google.adk.tools.tool_context import ToolContext
-
-
-# @log_function_call (disabled to prevent dual-logging since generate_video already logs)
+@log_function_call
 async def generate_video_storyboard_batch(
     tool_context: ToolContext,
     storyboard_json: str
@@ -407,6 +415,27 @@ async def generate_video_storyboard_batch(
     if not scenes:
         return "Error: No scenes found in the storyboard payload."
 
+    utils_agents.geminienterprise_print(tool_context, "🕒 Pre-flight validating Veo 3.1 duration constraints across all scenes...")
+    
+    invalid_scenes_errors = []
+    
+    for scene in scenes:
+        scene_num = int(scene.get("scene_number", 1))
+        modality = scene.get("generation_modality", "first_frame")
+        dur = int(scene.get("duration", scene.get("duration_seconds", 4)))
+        
+        if modality == "reference_images":
+            if dur != 8:
+                invalid_scenes_errors.append(f"- Scene {scene_num} requests 'reference_images' but duration is {dur}s. It MUST be exactly 8s.")
+        else:
+            if dur not in [4, 6, 8]:
+                invalid_scenes_errors.append(f"- Scene {scene_num} requests 'first_frame' but duration is {dur}s. It MUST be exactly 4, 6, or 8s.")
+                
+    if invalid_scenes_errors:
+        error_msg = "Error: Batch video generation aborted. The following scenes have invalid durations:\n" + "\n".join(invalid_scenes_errors) + "\nPlease rewrite your JSON payload and retry with correct durations."
+        log_message(error_msg, Severity.ERROR)
+        return error_msg
+
     utils_agents.geminienterprise_print(tool_context, f"🚀 Firing off {len(scenes)} concurrent Vertex AI jobs across mixed modalities...")
     
     tasks = []
@@ -419,11 +448,9 @@ async def generate_video_storyboard_batch(
         is_logo_scene = bool(scene.get("is_logo_scene", False))
         duration_seconds = int(scene.get("duration", scene.get("duration_seconds", 4)))
         healing_retry_count = int(scene.get("healing_retry_count", 1))
-
+        scene_aspect_ratio = scene.get("aspect_ratio") or data.get("aspect_ratio")
+        
         if generation_modality == "reference_images":
-            if duration_seconds != 8:
-                return f"Error: Scene {scene_number} requested 'reference_images' generation_modality but specified duration {duration_seconds}. Veo 3.1 absolutely requires exactly 8 seconds for reference image workflows. Please rewrite your JSON payload and set duration to 8 or change the modality."
-            
             task = generate_video_from_reference_images(
                 tool_context=tool_context,
                 scene_number=scene_number,
@@ -435,7 +462,8 @@ async def generate_video_storyboard_batch(
                 product_image_url=product_image_url,
                 main_character_url=main_character_url,
                 reference_images=global_reference_images,
-                healing_retry_count=healing_retry_count
+                healing_retry_count=healing_retry_count,
+                aspect_ratio=scene_aspect_ratio
             )
         else:
             # first_frame modality
@@ -455,7 +483,8 @@ async def generate_video_storyboard_batch(
                 main_character_url=main_character_url,
                 asset_sheet_url=asset_sheet_url,
                 reference_images=other_reference_images,
-                healing_retry_count=healing_retry_count
+                healing_retry_count=healing_retry_count,
+                aspect_ratio=scene_aspect_ratio
             )
             
         tasks.append(task)
@@ -513,6 +542,7 @@ async def _fetch_and_create_ingredient(uri: str, description: str, tool_context:
         return None
 
 
+@log_function_call
 async def generate_video_from_reference_images(
     tool_context: ToolContext,
     scene_number: int,
@@ -525,6 +555,7 @@ async def generate_video_from_reference_images(
     main_character_url: str = "",
     reference_images: Optional[List[str]] = None,
     healing_retry_count: int = 1,
+    aspect_ratio: str | None = None,
 ) -> Dict[str, Any]:
     """Generates a SINGLE video snippet from a visual description and multiple ingredient reference images.
     
@@ -543,8 +574,17 @@ async def generate_video_from_reference_images(
         main_character_url: The GCS URI for the character reference (4th priority).
         reference_images: An array of fallback image URIs to fill the remaining 3 slots.
         healing_retry_count: REQUIRED integer measuring how many times this scene has been retried to heal evaluation failures. Start at 1. Max 2.
+        aspect_ratio (str, optional): The target aspect ratio for the generated video (e.g. \"16:9\"). If none, defaults to runtime env.
     """
+    from adk_common.dtos.errors import ShowableException
     
+    if duration_seconds != 8:
+        return {
+            "status": "failed",
+            "detail": f"Invalid duration_seconds {duration_seconds} for `generate_video_from_reference_images`. The ONLY allowed duration is exactly 8 seconds.",
+            "scene_number": scene_number
+        }
+        
     if reference_images is None:
         reference_images = []
         
@@ -555,10 +595,10 @@ async def generate_video_from_reference_images(
     try:
         # 1. Resolve images to LabeledReferenceImage, honoring priority order.
         priority_order = [
-            ("Asset Sheet", asset_sheet_url, "Master Asset Sheet containing the exact visual style."),
             ("Logo", logo_image_url, "Brand Logo. Ensure the logo is completely intact and never morphs."),
             ("Product", product_image_url, "Canonical Product Image. The video must feature this exact product without distortion."),
             ("Character", main_character_url, "Main Character Reference Image. The generated subject must match this exact identity."),
+            ("Asset Sheet", asset_sheet_url, "Master Asset Sheet containing the exact visual style."),
         ]
         
         final_ingredients = []
@@ -583,14 +623,11 @@ async def generate_video_from_reference_images(
         video_semaphore = asyncio.Semaphore(VIDEO_GENERATION_CONCURRENCY_LIMIT)
 
         # 4. Enhance the prompt using LLM (Director's Treatment)
-        llm_enhanced_description = await _enhance_prompt_with_llm(
+        final_prompt = await _enhance_prompt_with_llm(
             prompt, 
             is_logo_scene, 
             tool_context
         )
-
-        # 5. Wrap in technical mandates
-        final_prompt = _construct_technical_prompt(llm_enhanced_description, is_logo_scene)
 
         # 6. Execute Generation
         video_input = VideoGenerationInput(
@@ -601,13 +638,13 @@ async def generate_video_from_reference_images(
             is_logo_scene=is_logo_scene,
             scene_number=scene_number,
             reference_images=final_ingredients,
+            aspect_ratio=aspect_ratio,
         )
 
         video_result, error_msg = await generate_single_video_from_ingredients(
             video_input=video_input,
             tool_context=tool_context,
             video_semaphore=video_semaphore,
-            prompt_enhancer=_enhance_prompt_with_llm,
         )
 
         if video_result:

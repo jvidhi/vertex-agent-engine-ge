@@ -73,7 +73,7 @@ from .func_tools.generate_audio import generate_audio_and_voiceover
 from .func_tools.generate_asset_sheet import generate_asset_sheet
 from .func_tools.generate_scene_frame import generate_scene_frame
 from .func_tools.generate_storyboard_image_batch import generate_storyboard_image_batch
-from .func_tools.generate_ad_hoc_image import generate_ad_hoc_image
+from .func_tools.generate_ad_hoc_image import generate_ad_hoc_image, generate_ad_hoc_image_batch
 from .func_tools.generate_display_ad import generate_display_ad
 from .func_tools.generate_video import (
     generate_video_from_first_frame,
@@ -111,6 +111,7 @@ async def _dynamic_instruction_provider(
             "GENERATE_SCENE_FRAME_TOOL": generate_scene_frame.__name__,
             "GENERATE_STORYBOARD_IMAGE_BATCH_TOOL": generate_storyboard_image_batch.__name__,
             "GENERATE_AD_HOC_IMAGE_TOOL": generate_ad_hoc_image.__name__,
+            "GENERATE_AD_HOC_IMAGE_BATCH_TOOL": generate_ad_hoc_image_batch.__name__,
             "GENERATE_DISPLAY_AD_TOOL": generate_display_ad.__name__,
             "GENERATE_VIDEO_FROM_FIRST_FRAME_TOOL": generate_video_from_first_frame.__name__,
             "GENERATE_VIDEO_FROM_REFERENCE_IMAGES_TOOL": generate_video_from_reference_images.__name__,
@@ -152,6 +153,7 @@ root_agent = LlmAgent(
         FunctionTool(func=generate_scene_frame),
         FunctionTool(func=generate_storyboard_image_batch),
         FunctionTool(func=generate_ad_hoc_image),
+        FunctionTool(func=generate_ad_hoc_image_batch),
         FunctionTool(func=generate_display_ad),
         FunctionTool(func=generate_video_from_first_frame),
         FunctionTool(func=generate_video_from_reference_images),

@@ -22,3 +22,6 @@ static/uploads/*
 # macOS specific files
 .DS_Store
 
+# Evaluation outputs
+eval_results/
+.adk/

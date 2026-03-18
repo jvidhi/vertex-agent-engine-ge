@@ -1,0 +1,47 @@
+{
+  "eval_set_id": "ad_gen_missing_assets_stop",
+  "name": "Missing Assets Validation (Gatekeeper)",
+  "description": "Validates that the orchestrator halts execution and explicitly requests user permission rather than autonomously generating missing foundational brand assets like Product or Character URLs.",
+  "eval_cases": [
+    {
+      "eval_id": "missing_product_asset",
+      "conversation": [
+        {
+          "invocation_id": "missing_asset_inv_1",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Generate a new video ad for Catalyst Shoes. Make it look sleek. My company is Organic Living Collection."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "I noticed the brand configuration is missing the main product image and the main character. Would you like to provide direct URLs for these missing assets, or shall I autonomously generate placeholders for them?"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "args": {
+                  "company_name": "Vantus"
+                },
+                "name": "retrieve_brand_identity"
+              }
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "content_generation_agent",
+        "user_id": "test_user_strict",
+        "state": {}
+      }
+    }
+  ]
+}

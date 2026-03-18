@@ -18,6 +18,7 @@ import time
 from datetime import datetime
 import asyncio
 from datetime import datetime
+from enum import Enum
 from typing import List, Any, Dict, Optional
 
 from google import genai
@@ -63,8 +64,10 @@ def _is_transient_error(exception: BaseException) -> bool:
         return True
     return False
 
+class VideoModality(Enum):
+    FIRST_FRAME = "first_frame"
+    REFERENCE_IMAGES = "reference_images"
 
-# Removed decorator
 
 async def generate_video_bytes(
     client: genai.Client,
@@ -77,7 +80,9 @@ async def generate_video_bytes(
     person_generation: Optional[str] = None,
     enhance_prompt: Optional[bool] = None,
     generate_audio: Optional[bool] = None,
-    reference_images: Optional[List[Any]] = None,
+    modality: VideoModality = VideoModality.FIRST_FRAME,
+    reference_images: Optional[List[types.VideoGenerationReferenceImage]] = None,
+    initial_frame_image: Optional[types.Image] = None,
     fps: Optional[int] = None,
     max_retries: int = 4,
     retry_delay_min: float = 2.0,
@@ -98,22 +103,43 @@ async def generate_video_bytes(
             reraise=True
         ):
             with attempt:
-                config = types.GenerateVideosConfig(
-                    number_of_videos=number_of_videos,
-                    duration_seconds=duration_seconds,
-                    aspect_ratio=aspect_ratio,
-                    resolution=resolution,
-                    person_generation=person_generation,
-                    enhance_prompt=enhance_prompt,
-                    generate_audio=generate_audio,
-                    reference_images=reference_images,
-                    fps=fps
-                )
-                operation = await client.aio.models.generate_videos(
-                    model=model,
-                    prompt=prompt,
-                    config=config
-                )
+                if modality == VideoModality.REFERENCE_IMAGES:
+                    config = types.GenerateVideosConfig(
+                        number_of_videos=number_of_videos,
+                        duration_seconds=duration_seconds,
+                        aspect_ratio=aspect_ratio,
+                        resolution=resolution,
+                        person_generation=person_generation,
+                        enhance_prompt=enhance_prompt,
+                        generate_audio=generate_audio,
+                        reference_images=reference_images,
+                        fps=fps
+                    )
+                    operation = await client.aio.models.generate_videos(
+                        model=model,
+                        prompt=prompt,
+                        config=config
+                    )
+                else:  # FIRST_FRAME
+                    config = types.GenerateVideosConfig(
+                        number_of_videos=number_of_videos,
+                        duration_seconds=duration_seconds,
+                        aspect_ratio=aspect_ratio,
+                        resolution=resolution,
+                        person_generation=person_generation,
+                        enhance_prompt=enhance_prompt,
+                        generate_audio=generate_audio,
+                        fps=fps
+                    )
+                    source = types.GenerateVideosSource(
+                        prompt=prompt,
+                        image=initial_frame_image
+                    )
+                    operation = await client.aio.models.generate_videos(
+                        model=model,
+                        source=source,
+                        config=config
+                    )
     except ClientError as e:
         if _is_transient_error(e):
             raise ShowableException("Video Generation failed: We are heavily throttled or experiencing connectivity issues. You may retry or advise the user to wait.", e)
@@ -161,98 +187,3 @@ async def generate_video_bytes(
     return extracted_videos
 
 
-async def text_or_image_to_video(
-    vid_prompt: str, image_uri: str, duration_seconds: int, aspect_ratio: str, resolution: str, tool_context: ToolContext, video_index: int = 1,
-) -> List[GeneratedMedia]:
-    """
-    Generates a video from a text prompt and saves it.
-    This function uses an video generation model to create videos based on the
-    provided text prompt. Each generated video is saved as a MP4 file artifact.
-
-    Args:
-        prompt: The text prompt to use for video generation.
-        image_uri: the fully-formed URI for the image to use as input for the video.
-        duration_seconds: The duration of the generated video in seconds (can be one of [8,6,4] for image_to_video).
-        aspect_ratio: The aspect ratio of the generated video (can be one of ["16:9", "9:16"]).
-        resolution: The resolution of the generated video (can be one of ["720p", "1080p"]).
-        video_index: The index of the first video to generate (for naming).
-
-    Returns:
-        On success, it returns a list of generated GCS uri. Unlike image generation, 
-        the video is generated and stored in GCS.
-    """
-
-    client = genai.Client(
-        vertexai=True,
-        project=GOOGLE_CLOUD_PROJECT,
-        location=MODELS_CLOUD_LOCATION,
-    )
-
-    operation: types.GenerateVideosOperation
-    
-    try:
-        reference_images = None
-        if image_uri:
-            image_uri = utils_gcs.normalize_to_gs_bucket_uri(image_uri)
-            print(f"{LOGGING_PREFIX} Reference image GCS URI: `{image_uri}`.")
-            reference_images = [
-                types.VideoGenerationReferenceImage(
-                    image=types.Image(gcs_uri=image_uri, mime_type="image/png"),
-                    reference_type=types.VideoGenerationReferenceType("asset")
-                )
-            ]
-
-        extracted_videos = await generate_video_bytes(
-            client=client,
-            model=VIDEO_GENERATION_MODEL,
-            prompt=vid_prompt,
-            number_of_videos=1,
-            duration_seconds=duration_seconds,
-            aspect_ratio=aspect_ratio,
-            resolution=resolution,
-            person_generation=PERSON_GENERATION_MAP["Allow (All ages)"],
-            enhance_prompt=True,
-            generate_audio=True,
-            reference_images=reference_images
-        )
-
-        generated_videos: List[GeneratedMedia] = []
-        for i, (video_bytes, mime_type) in enumerate(extracted_videos):    
-            extension = mimetypes.guess_extension(mime_type)
-
-            if image_uri:
-                filename = f"{TI2V_PREFIX}{i+video_index}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}{extension}"
-            else:
-                filename = f"{T2V_PREFIX}{i+video_index}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}{extension}"
-            
-            print(f"{LOGGING_PREFIX} Generated T2V: filename: {filename}. mime_type: {mime_type}")
-            
-            uploaded_file_uri = utils_gcs.upload_to_gcs(
-                bucket_path=GOOGLE_CLOUD_BUCKET_ARTIFACTS,
-                file_bytes=video_bytes,
-                destination_blob_name=filename,
-            )
-            
-            generated_video = GeneratedMedia(
-                filename=filename,
-                media_bytes=video_bytes,
-                mime_type=mime_type,
-                description=f"Video {i+video_index} generated from prompt: {vid_prompt}",
-                title=f"Video {i+video_index}",
-                gcs_uri= utils_gcs.normalize_to_authenticated_url(uploaded_file_uri)
-            )
-            
-            await utils_agents.save_to_artifact_and_render_asset(
-                asset=generated_video,
-                context=tool_context,
-            )
-            
-            generated_videos.append(generated_video)
-
-        return generated_videos
-
-    except Exception as e:
-        print(f"{LOGGING_PREFIX} ERROR in text_or_image_to_video: {e}")
-        raise
-    
-    return generated_videos

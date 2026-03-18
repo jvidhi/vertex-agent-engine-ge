@@ -1,0 +1,73 @@
+{
+  "eval_set_id": "ad_gen_long_context",
+  "name": "Long Context Asset Retrieval",
+  "description": "Validates that the orchestrator retains foundational brand assets provided early in the conversation and seamlessly uses them in downstream generative tools during later turns.",
+  "eval_cases": [
+    {
+      "eval_id": "multi_turn_retrieval",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Hi! We are starting a new campaign for Catalyst Shoes. We are promoting the Catalyst Shoes shoes. Here are the approved assets we will use for the entire session. Product: https://storage.googleapis.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_jeans.png. Character: https://storage.googleapis.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_sweater.png. Logo: https://storage.googleapis.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_logo.png."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Great! I have saved those assets for Catalyst Shoes. What would you like to create first?"
+              }
+            ],
+            "role": "model"
+          }
+        },
+        {
+          "invocation_id": "turn_2",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Actually, before we start, what is our target demographic for this campaign?"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Based on Catalyst Shoes, our primary demographic is active young adults interested in outdoor fitness. Would you like to proceed with the campaign generation?"
+              }
+            ],
+            "role": "model"
+          }
+        },
+        {
+          "invocation_id": "turn_3",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Yes. Please generate a full video ad storyboard completely autonomously now using the assets I sent you earlier. Stop immediately after generating the video batch. Do NOT generate audio, do NOT combine the video, and do NOT evaluate it."
+              }
+            ],
+            "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "retrieve_brand_identity"
+              }
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "content_generation_agent",
+        "user_id": "test_user_long_context",
+        "state": {}
+      }
+    }
+  ]
+}

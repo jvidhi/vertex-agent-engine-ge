@@ -2,13 +2,13 @@ import json
 import asyncio
 from typing import Dict, Any, List
 
-from adk_common.utils.utils_logging import Severity, log_message
+from adk_common.utils.utils_logging import Severity, log_function_call, log_message
 from adk_common.utils import utils_agents
 from google.adk.tools.tool_context import ToolContext
 
 from ad_generation_agent.func_tools.generate_scene_frame import generate_scene_frame
 
-# @log_function_call (disabled to prevent dual-logging since generate_scene_frame already logs)
+@log_function_call
 async def generate_storyboard_image_batch(
     tool_context: ToolContext,
     storyboard_json: str
@@ -28,6 +28,7 @@ async def generate_storyboard_image_batch(
               "logo_image_url": "gs://...",
               "main_character_url": "gs://...",
               "asset_sheet_url": "gs://...",
+              "aspect_ratio": "16:9",
               "scenes": [
                 {
                   "scene_number": 1,
@@ -59,6 +60,7 @@ async def generate_storyboard_image_batch(
     logo_image_url = data.get("logo_image_url", "")
     main_character_url = data.get("main_character_url", "")
     asset_sheet_url = data.get("asset_sheet_url", "")
+    global_aspect_ratio = data.get("aspect_ratio", None)
     
     scenes = data.get("scenes", [])
     if not isinstance(scenes, list):
@@ -99,6 +101,8 @@ async def generate_storyboard_image_batch(
         if reference_image and isinstance(reference_image, str) and reference_image.strip():
             all_refs.append(reference_image.strip())
 
+        scene_aspect_ratio = scene.get("aspect_ratio", global_aspect_ratio)
+
         # Create the coroutine task object (does not execute until asyncio.gather)
         task = generate_scene_frame(
             scene_number=scene_number,
@@ -110,7 +114,8 @@ async def generate_storyboard_image_batch(
             logo_image_url=logo_image_url,
             main_character_url=main_character_url,
             asset_sheet_url=asset_sheet_url,
-            reference_images=all_refs
+            reference_images=all_refs,
+            aspect_ratio=scene_aspect_ratio
         )
         tasks.append(task)
 

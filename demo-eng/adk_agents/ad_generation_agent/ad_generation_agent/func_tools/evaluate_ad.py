@@ -15,14 +15,14 @@
 from typing import List, Tuple
 from ad_generation_agent.utils.evaluate_media import evaluate_media
 from ad_generation_agent.utils.eval_result import EvalResult
-from adk_common.utils.utils_logging import Severity, log_message
+from adk_common.utils.utils_logging import Severity, log_message, log_function_call
 from adk_common.utils import utils_agents
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types
 
+@log_function_call
 async def evaluate_ad(
     media_url: str,
-    number_of_scenes: int,
     mime_type: str,
     prompt: str,
     reference_images: List[str],
@@ -32,7 +32,6 @@ async def evaluate_ad(
 
     Args:
         media_url (str): The URL/URI of the media asset to evaluate.
-        number_of_scenes (int): The number of scenes in the ad (contextual).
         mime_type (str): The MIME type of the asset (e.g., 'video/mp4', 'image/png').
         prompt (str): A detailed description of what the ad is intended to represent.
         reference_images (List[str]): A list of URIs for reference images.
@@ -61,13 +60,9 @@ async def evaluate_ad(
                  log_message(f"Warning: Could not load reference image from {ref_uri}", Severity.WARNING)
 
         # Basic criteria based on prompt and consistency
+        # Detailed physics, consistency, and branding rules are handled modularly by evaluation_prompts.py
         evaluation_criteria = (
-            f"Does the media accurately represent the prompt: '{prompt}'? "
-            f"Is it consistent with the provided reference images? "
-            f"Does it adhere to the expected style and quality? "
-            f"PHYSICS MANDATE: Physics must be accurate and grounded; no floating objects, clipping, or unnatural movements. "
-            f"CONSISTENCY: Characters and key elements must be strictly consistent across all scenes, maintaining identity and appearance from reference images. "
-            f"BRANDING: There must be a strong, clear focus on the product and the brand/logo; they should be prominent, correctly represented, and undistorted."
+            f"Ensure the media accurately represents the following prompt: '{prompt}'"
         )
 
         result: EvalResult = await evaluate_media(
@@ -87,6 +82,16 @@ async def evaluate_ad(
             f"Decision: {result.decision}",
             f"Reason: {result.summary_reason}",
             f"Improvement Prompt: {result.improvement_prompt}",
+            "Defects:"
+        ]
+        
+        if result.defects:
+            for defect in result.defects:
+                output_lines.append(f"  - [Tier {defect.tier}] [{defect.timestamp}] {defect.category}: {defect.description}")
+        else:
+            output_lines.append("  - None")
+            
+        output_lines.extend([
             "Scores:",
             f"  - Subject & Brand: {result.category_scores.subject_and_brand}",
             f"  - Physics & Logic: {result.category_scores.physics_and_logic}",
@@ -96,7 +101,7 @@ async def evaluate_ad(
             f"  - LLM Score: {result.llm_evaluation_score}",
             f"  - Calculated Score: {result.calculated_evaluation_score}",
             f"  - Averaged Score: {result.averaged_evaluation_score}"
-        ]
+        ])
         
         return "\n".join(output_lines)
 

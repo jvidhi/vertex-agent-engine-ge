@@ -60,16 +60,15 @@ gcloud auth application-default login
 ### 2. Infrastructure Setup
 Enable the required Google Cloud APIs for your project:
 ```bash
-# Set your project ID
-export GOOGLE_CLOUD_PROJECT="your-project-id"
+# Set your active gcloud project
+gcloud config set project <YOUR-PROJECT-ID>
 
 # Enable APIs
 gcloud services enable \
     aiplatform.googleapis.com \
     texttospeech.googleapis.com \
     storage.googleapis.com \
-    cloudresourcemanager.googleapis.com \
-    --project="${GOOGLE_CLOUD_PROJECT}"
+    cloudresourcemanager.googleapis.com
 ```
 
 ### 3. Local Testing
@@ -77,6 +76,17 @@ Launch the ADK Web UI from the **workspace root**:
 ```bash
 uv run adk web
 ```
+
+### 4. Running Agentic Evaluations
+This agent uses the `AgentEvaluator` to deterministically test LLM trajectories and tool routing against deterministic JSON configuration files via a unified script. **All structural evaluation JSONs MUST reside in the singular, top-level `/evals` directory alongside the unifying `test_config.json` file. Do not nest them.**
+* **CI/CD Execution**: To automatically discover and run all tests, use PyTest:
+  ```bash
+  uv run pytest ad_generation_agent/test_evals.py
+  ```
+* **Manual Execution (CLI)**: To run a specific test and capture verbose execution traces locally to a timestamped file in `eval_results/`, execute it as a Python script:
+  ```bash
+  uv run python ad_generation_agent/test_evals.py evals/storyboard_hierarchy.test.json
+  ```
 
 ---
 
@@ -138,12 +148,6 @@ All variables are required either in `.env` (local) or the deployment JSON.
 | :--- | :--- |
 
 ---
-
-### 10. Deployment & Permissions
-The `ad_generation_agent` is successfully updated on Vertex AI Reasoning Engine.
-- **Deployment**: Utilized `deploy.py` with `4.20260224.1-fabricofuint-prod.json`.
-- **Permissions**: Granted `roles/storage.objectAdmin` to the Reasoning Engine service account for the `fabricofuint_organic_living_artifacts` bucket to fix a `storage.objects.delete` error.
-- **Documentation**: Updated `README.md` to accurately reflect the required permissions.
 
 ## 📦 Deployment
 

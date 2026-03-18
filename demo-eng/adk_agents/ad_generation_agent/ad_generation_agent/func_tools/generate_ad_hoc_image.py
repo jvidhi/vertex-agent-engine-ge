@@ -36,7 +36,7 @@ from google.genai import types
 
 GOOGLE_CLOUD_PROJECT = get_required_env_var("GOOGLE_CLOUD_PROJECT")
 GOOGLE_CLOUD_BUCKET_ARTIFACTS = get_required_env_var("GOOGLE_CLOUD_BUCKET_ARTIFACTS")
-
+IMAGE_DEFAULT_ASPECT_RATIO = get_required_env_var("IMAGE_DEFAULT_ASPECT_RATIO")
 RENDER_IMAGES_INLINE = get_required_env_var("RENDER_IMAGES_INLINE").lower() in ("true", "1", "yes")
 
 async def _create_ad_hoc_image_generation_task(
@@ -48,6 +48,7 @@ async def _create_ad_hoc_image_generation_task(
     product_image_uri: str | None = None,
     logo_image_uri: str | None = None,
     main_character_uri: str | None = None,
+    aspect_ratio: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a task for generating an ad-hoc image.
 
@@ -123,33 +124,39 @@ async def _create_ad_hoc_image_generation_task(
                 reference_image_parts.append(part)
                 image_descriptions.append(f"REFERENCE IMAGE: Use this as general visual or stylistic reference ({generated_media.filename}).")
 
-    prompt = f"{image_prompt}"
-    prompt += "\n\n**STYLE MANDATE**:"
-    prompt += "\n* Ensure the image generated follows all guidance provided in the asset sheet, most especially product & character consistency."
-    prompt += "\n* Unless a specific art style is requested in the prompt, the image MUST be high-quality and visually striking."
-    
-    prompt += "\n\n**CONSISTENCY PROTOCOL**:"
-    prompt += "\n* You **MUST** use the attached reference images to maintain consistent character appearance and product details."
-    prompt += "\n* If the character's face is visible, it MUST match the reference image exactly."
-    
+    logo_fidelity_protocol = ""
     if is_logo_scene:
-        prompt += "\n\n**CRITICAL LOGO FIDELITY PROTOCOL**:"
-        prompt += "\n* This image features the company logo. You **MUST** use the provided logo asset EXACTLY as is."
-        prompt += "\n* **DO NOT** alter, reimagine, or hallucinate the logo."
+        logo_fidelity_protocol = (
+            "\n\n**CRITICAL LOGO FIDELITY PROTOCOL**:\n"
+            "* This image features the company logo. You **MUST** use the provided logo asset EXACTLY as is.\n"
+            "* **DO NOT** alter, reimagine, or hallucinate the logo."
+        )
     
+    attached_reference_images_text = ""
     if image_descriptions:
-        prompt += "\n\n**ATTACHED REFERENCE IMAGES**:"
+        attached_reference_images_text = "\n\n**ATTACHED REFERENCE IMAGES**:"
         for desc in image_descriptions:
-            prompt += f"\n* {desc}"
+            attached_reference_images_text += f"\n* {desc}"
+
+    from adk_common.utils import utils_prompts
+    prompt = utils_prompts.load_prompt_file_from_calling_agent(
+        variables_to_replace={
+            "IMAGE_PROMPT": image_prompt,
+            "LOGO_FIDELITY_PROTOCOL": logo_fidelity_protocol,
+            "ATTACHED_REFERENCE_IMAGES": attached_reference_images_text
+        },
+        filename="../prompts/ad_hoc_image_generation_prompt.md"
+    )
 
     return await generate_and_select_best_image(
         filename_without_extension=filename_prefix,
         input_images=reference_image_parts,
         prompt=prompt,
+        aspect_ratio=aspect_ratio,
     )
 
 
-# @log_function_call
+@log_function_call
 async def generate_ad_hoc_image(
     prompt: str,
     tool_context: ToolContext,
@@ -160,6 +167,7 @@ async def generate_ad_hoc_image(
     asset_sheet_url: str = "",
     reference_images: List[str] | None = None,
     is_logo_scene: bool = False,
+    aspect_ratio: Optional[str] = None,
 ) -> Dict[str, Any]:
     f"""Generates a standalone, custom image based on user requests (ad-hoc imagery).
 
@@ -209,7 +217,11 @@ async def generate_ad_hoc_image(
                 "Do NOT guess or hallucinate URLs.\n" 
                 + "\n".join(invalid_urls)
             )
-            raise RuntimeError(error_msg)
+
+            return {
+                "status": "failed",
+                "detail": error_msg
+            }
 
         save_state_property(tool_context, ad_generation_constants.STATE_KEY_PRODUCT_IMAGE_URL, final_product_uri)
         save_state_property(tool_context, ad_generation_constants.STATE_KEY_PRODUCT_NAME, product_name)
@@ -218,6 +230,8 @@ async def generate_ad_hoc_image(
         save_state_property(tool_context, ad_generation_constants.STATE_KEY_ASSET_SHEET_URL, asset_sheet_url)
         
         all_refs = list(reference_images)
+
+        final_aspect_ratio = aspect_ratio or IMAGE_DEFAULT_ASPECT_RATIO
 
         result: Dict[str, Any] = await _create_ad_hoc_image_generation_task(
             image_prompt=prompt,
@@ -228,6 +242,7 @@ async def generate_ad_hoc_image(
             product_image_uri=final_product_uri,
             logo_image_uri=final_logo_uri,
             main_character_uri=main_character_url,
+            aspect_ratio=final_aspect_ratio,
         )
 
         if result and result.get("status") == "success" and result.get("image_bytes"):
@@ -259,5 +274,109 @@ async def generate_ad_hoc_image(
             return response
 
     except Exception as e:
-        log_message(f"Error in generate_ad_hoc_image: {e}", Severity.ERROR)
-        raise e
+        error_msg = f"Error in generate_ad_hoc_image: {str(e)}"
+        log_message(error_msg, Severity.ERROR)
+        return {
+            "status": "failed", 
+            "detail": error_msg,
+            "system_instruction": "Image generation failed (likely 429 Resource Exhausted or safety filter). Do NOT crash. Tell the user what happened."
+        }
+
+@log_function_call
+async def generate_ad_hoc_image_batch(
+    tool_context: ToolContext,
+    batch_json: str
+) -> str:
+    """Generates an entire set of ad-hoc images in parallel based on a single JSON payload.
+    
+    This tool safely unpacks a JSON configuration string to run maximum-latency concurrent image generation,
+    while automatically piping the results through the evaluation algorithms internally.
+
+    Args:
+        tool_context (ToolContext): The context for artifact management.
+        batch_json (str): A valid JSON string containing the batch configurations.
+            The JSON string MUST conform to the following schema:
+            [
+              {
+                "image_type": "product", # Label for what is being generated
+                "prompt": "Description of the image...",
+                "is_logo_scene": false
+              }
+            ]
+
+    Returns:
+        str: A compiled, human-readable markdown scorecard detailing the generated URIs for every image.
+    """
+    
+    utils_agents.geminienterprise_print(tool_context, "⚙️ Reading JSON payload for batch ad-hoc image generation...")
+    
+    try:
+        requests = json.loads(batch_json)
+    except Exception as e:
+        error_msg = f"Error: Failed to parse batch JSON string. Ensure it is perfectly formatted JSON array. Details: {e}"
+        log_message(error_msg, Severity.ERROR)
+        return error_msg
+
+    if not isinstance(requests, list):
+        return "Error: The `batch_json` MUST be a JSON array of objects."
+
+    if not requests:
+        return "Error: No requests found in the batch payload."
+
+    utils_agents.geminienterprise_print(tool_context, f"🚀 Firing off {len(requests)} concurrent Vertex AI Image generators...")
+    
+    tasks = []
+    
+    # Pre-build tasks for concurrent execution
+    for request in requests:
+        prompt = request.get("prompt", "")
+        # The user only passes a string. The internal task expects to read product_image_uri etc from state
+        # But for gap-fill adhoc, they are usually generating them FROM scratch, so they don't have them yet.
+        # So we just pass the prompt and standard defaults.
+        is_logo_scene = bool(request.get("is_logo_scene", False))
+
+        # Create the coroutine task object
+        task = _create_ad_hoc_image_generation_task(
+            image_prompt=prompt,
+            tool_context=tool_context,
+            is_logo_scene=is_logo_scene,
+        )
+        tasks.append(task)
+
+    # Await all tasks concurrently
+    try:
+        results = await asyncio.gather(*tasks)
+    except Exception as e:
+        return f"Error executing parallel asyncio gather for ad-hoc image batch: {e}"
+    
+    utils_agents.geminienterprise_print(tool_context, "✅ All rendering tasks complete. Compiling batch scorecard...")
+    
+    # Process results sequentially to build a cohesive string output for the LLM
+    final_output = f"### 🖼️ Batch Image Generation Complete ({len(results)} images)\n\n"
+    
+    for idx, res in enumerate(results):
+        req = requests[idx]
+        image_type = req.get("image_type", "Unknown")
+        status = res.get("status", "unknown")
+        
+        if status == "success":
+            uri = res.get("generated_image_uri", "N/A")
+            eval_score = res.get("evaluation_score", "No evaluation triggered")
+            final_output += (
+                f"**Request {idx + 1} ({image_type})**\n"
+                f"* Status: ✅ Success\n"
+                f"* URI: `{uri}`\n"
+                f"* Evaluation Score: {eval_score}/10\n"
+                f"---\n"
+            )
+        else:
+            final_output += (
+                f"**Request {idx + 1} ({image_type})**\n"
+                f"* Status: ❌ FAILED\n"
+                f"* Detail: {res.get('detail', 'Unknown error during ad-hoc batch generation')}\n"
+                f"---\n"
+            )
+            
+    log_message(f"Returning final batched string output to orchestrator:\n{final_output}", Severity.INFO)
+    return final_output
+

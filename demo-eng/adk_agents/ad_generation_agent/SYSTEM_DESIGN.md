@@ -4,13 +4,20 @@
 
 ---
 
-## 1. System Overview & The "Asset-First" Workflow
-The Ad Generation Agent is a multi-modal creative orchestrator built on top of Google Cloud's Vertex AI (Gemini, Imagen 3, Veo 3.1). Instead of generating a final video blindly, it enforces a strict, stateful **Asset-First Pipeline**:
+## 1. System Overview & The Target Workflow
 
-1. **Brand Discovery (`RETRIEVE_BRAND_IDENTITY_TOOL`)**: Fuzzy matches user input against a GCS catalog to pull canonical logos, product shots, and style guides perfectly into memory context (`BRAND_CONTEXT_PAYLOAD`).
-2. **Concept Anchoring (`GENERATE_ASSET_SHEET_TOOL`)**: Generates an isolated "Prop Sheet" or "Character Turnaround" to force downstream models to use consistent subjects (combating temporal hallucination).
-3. **Narrative Construction**: The LLM natively writes a storyboard sequence based on the approved assets.
-4. **Media Generation (Images & Videos)**: The agent fans out across highly-concurrent pipelines to generate, evaluate, and self-heal media for every scene.
+![Ad Generation Target Workflow](./video_agent_flow.png)
+
+The Ad Generation Agent is a multi-modal creative orchestrator built on Google Cloud's Vertex AI (Gemini, Imagen 3, Veo 3.1). As depicted in the workflow diagram, the system enforces a strict state-machine logic designed to minimize hallucination, maximize brand fidelity, and optimize compute. Key aspects of this visual flow include:
+
+1. **Information Gathering & Brand Discovery (`RETRIEVE_BRAND_IDENTITY_TOOL`)**: Fuzzy matches user input against a GCS catalog to pull canonical logos, product shots, and style guides perfectly into memory context (`BRAND_CONTEXT_PAYLOAD`).
+2. **Asset Gap Fill**: The agent prompts the user to confirm generating missing generic assets (leveraging `GENERATE_AD_HOC_IMAGE_TOOL`).
+3. **Narrative Construction (The Master Script)**: The LLM natively writes a detailed storyline script *before* generative tools are called. This acts as the unshakeable creative brief that prevents context drift.
+4. **Visual Anchoring**: The agent calls `GENERATE_ASSET_SHEET_TOOL` to lock target character/prop visuals across scenes based on the script.
+5. **Batch Generation**: The agent kicks off `GENERATE_VIDEO_STORYBOARD_BATCH_TOOL` to generate all video clips asynchronously in parallel.
+6. **Agentic Single-Heal Loop**: A major architectural cornerstone. If the backend batch evaluates that a single scene critically needs regeneration (and exhausts its internal retries), it definitively fails. The *Agent* then manually takes over, executing a targeted heal on that specific scene via `GENERATE_VIDEO_FROM_REFERENCE_IMAGES_TOOL` or `GENERATE_VIDEO_FROM_FIRST_FRAME_TOOL`.
+7. **Audio Caching Pipeline & Assembly**: The agent generates Audio (`GENERATE_AUDIO_AND_VOICEOVER_TOOL`). A critical aspect of the flow is that **audio is cached and reused** if the user triggers a regression loop (e.g., fixing Scene 2 visuals), saving massive compute. The combination step (`COMBINE_TOOL`) then merges the final MP4.
+8. **Final Evaluation**: The agent runs a single, conclusive `EVALUATE_AD_TOOL` check against the flattened output. The workflow explicitly mandates that this evaluation happens *after* the combination step so the evaluator can holistically judge video pacing and audio sync. If it fails, it prompts the user for permission to restart the loop.
 
 ---
 
@@ -19,8 +26,8 @@ The codebase strictly distances the LLM's cognitive loop from the underlying inf
 
 *   `ad_generation_agent/prompt.md`: The brain. Contains the explicitly enumerated state-machine logic the agent uses to guide the user. It explicitly orders the agent to halt and ask for permission before moving between workflow stages.
 *   `ad_generation_agent/agent.py`: Langchain/Vertex core setup orchestrating the `LlmAgent` initialization and registering the specific `FunctionTool` wrappers.
-*   `ad_generation_agent/func_tools/`: Thin, LLM-facing function signatures. These files map the natural language intent into typed Python variables. **Crucially, they implement parallelization (using `asyncio.gather`) for batch operations**, fanning out scene generation requests.
-*   `ad_generation_agent/utils/`: The deep implementation tier. Files like `video_generation.py` directly instantiate Vertex API clients, execute exponential backoffs, enforce duration rounding logic, and handle the "LLM-as-a-Judge" evaluation loops.
+*   `ad_generation_agent/func_tools/`: Thin, LLM-facing function signatures. These files implement the distinct tools mapped in the workflow diagram (Batch Video, Single-Heal Video, Combine, Evaluate). `generate_video_storyboard_batch.py` handles parallelization (using `asyncio.gather`), while `generate_video.py` acts as the underlying engine handling retries and eval-loops.
+*   `ad_generation_agent/utils/`: The deep implementation tier. Files like `video_generation.py` directly instantiate Vertex API clients, execute exponential backoffs, enforce duration rounding logic, and handle the native "LLM-as-a-Judge" evaluation loops.
 
 ---
 
@@ -60,6 +67,11 @@ The batch-generation tools (`generate_storyboard_image_batch` and `generate_stor
 *   **Why?** Standard LLM tool-calling architectures often aggressively throttle or fail to parse extremely deep, dynamic schemas (like a 10-scene ad with branching parameters and reference arrays).
 *   **The Trade-off:** By defining the input as a single `string` containing JSON, we force the LLM to serialize the entire payload internally and bypass strict OpenAPI parameter depth limits. The underlying Python code simply calls `json.loads(storyboard_json)` and immediately benefits from dynamic array sizes for arbitrarily large commercials.
 
+### F. Aesthetic Constraints & Photorealism Enforcement
+Modern image generation models occasionally default to illustrations, 3D renders, or cartoonish outputs depending on their internal routing or minor keywords in the prompt.
+*   **Design Choice:** To enforce a premium, commercial aesthetic across the entire application, an `AESTHETICS (CRITICAL)` constraint is hardcoded directly into the Python layer of every generation tool (`generate_asset_sheet.py`, `generate_ad_hoc_image.py`, `generate_scene_frame.py`, `generate_display_ad.py`).
+*   **Mechanism:** Just before the prompt payload is sent to the Vertex AI API, the string `Unless explicitly requested otherwise (e.g., cartoon, illustration, 3d render), the image MUST be a hyperrealistic, photorealistic photograph.` is forcefully appended. This ensures the output remains photorealistic by default, while allowing the orchestrating LLM to explicitly override it if a user *actually* requests an animated or illustrated ad.
+
 ---
 
 ## 4. The Native Agent "Evaluation Loop"
@@ -74,8 +86,17 @@ The Gemini evaluator maps its judgment into a strict `EvalResult` schema evaluat
 4.  **Temporal Flow:** (Video only) Is the motion smooth and logical without catastrophic generation morphing?
 5.  **Consistency:** Does it match the explicitly requested storyline?
 
-**Self-Healing Implementation:**
-If the `EvalResult.decision` is "Fail", the LLM-as-a-judge provides an `improvement_prompt` (e.g., *"The character is missing the requested red hat."*). The system suppresses the failure from the orchestrator, appends the feedback to the prompt natively (`CRITICAL FIXES NEEDED OVER PREVIOUS ATTEMPT: {feedback}`), and automatically restarts the Vertex generation call recursively until it passes or hits `VIDEO_GENERATION_EVAL_REATTEMPTS`.
+**Self-Healing Implementation (The Backend vs Agentic Split):**
+The codebase deliberately bifurcates retry responsibilities to balance token costs against deterministic state management:
+1. **The Backend Retry (Invisible to Agent):** When `generate_video.py` calls the Veo API and the resulting video violently breaches physical logic (evaluated by Gemini), the Python code triggers an internal `while` loop. It appends the evaluator's "fix" request to the prompt and retries the Veo API silently, decrementing `VIDEO_GENERATION_TENACITY_ATTEMPTS`. The Orchestrator LLM is completely unaware of this loop, saving massive wait delays and input tokens.
+2. **The Agentic Retry (Visible to LLM):** If the *Backend Retry* exhausts its internal counter without achieving a "Pass" score, it breaks the loop and forcefully returns a `Failed` signal back up the chain to the Orchestrator. At this point, the state-machine protocol kicks in: The Agent acknowledges the failure to the user, formulates a new text plan, and explicitly calls the singular `GENERATE_VIDEO_FROM_FIRST_FRAME_TOOL` (or reference tool) to orchestrate a manual heal on that specific scene.
+
+### Unit Testing & Trajectory Verification (`test_evals.py`)
+To prevent configuration drift from breaking the complex Orchestrator state-machine, the agent employs deterministic ADK `AgentEvaluator` assertions. 
+*   **The Directory Rule:** All agent evaluation configuration JSONs (e.g. `test_config.json`, `*.test.json`) *must* be kept in a single top-level `/evals` directory alongside the unified script (e.g., `ad_generation_agent/evals/`). **Do not** create nested `evals/` folders deeper in the package hierarchy (e.g., `ad_generation_agent/ad_generation_agent/evals/` is strictly forbidden).
+*   **The Problem:** LLM testing environments frequently suffer from file proliferation (e.g., separate scratchpads, PyTest hooks, and debug loggers).
+*   **The Solution:** Evaluation execution is strictly unified under a single entry point: `test_evals.py`.
+*   **Mechanism:** This script implements a Dual-Mode execution pattern. When triggered by automated CI/CD runners (via `pytest`), it fires a global suite execution. When triggered manually via CLI (via `python test_evals.py [path]`), it intercepts the standard output, captures the highly verbose interaction matrices and trace telemetry, and cleanly routes the debug payload to timestamped text files inside the heavily `.gitignore`d `eval_results/` directory.
 
 ---
 
@@ -86,3 +107,42 @@ If the `EvalResult.decision` is "Fail", the LLM-as-a-judge provides an `improvem
 ## 6. Deployment & Configuration Matrix
 This agent follows the **ADK Decentralized Deployment Pattern**. Its operating parameters are defined in specific JSON files within `deployment_config/` (e.g., `prod-3.20260119.1.json` or `staging-4.20260219.1.json`). 
 *   **The Mapping Rule (CRITICAL):** Whenever new environment variables (like `VIDEO_GENERATION_CONCURRENCY_LIMIT`) are introduced to the core logic, they MUST be identically mapped into all relevant staging/prod JSON config matrices. This ensures perfect runtime parity in the Cloud Reasoning Engine environments where the overarching `marketing_orchestrator` relies on these JSONs to hydrate the Cloud Run application.
+
+---
+
+## 7. Historical Decisions & Refactoring Context (March 2026)
+This section preserves the critical context, debates, and trade-offs made during the massive Veo 3.1 / V2 Orchestration refactor to ensure future AI agents understand *why* the code is written this way.
+
+### A. The Post-Combine Evaluation Debate
+*   **The Proposal:** An initial proposal suggested running the final `EVALUATE_AD_TOOL` *before* the `COMBINE_TOOL` (audio + video merge). The argument was that evaluating an assembled MP4, failing it, and looping back would waste the compute spent on generating the Audio track.
+*   **The Rejection & Final Decision:** This was explicitly rejected by the user. The final evaluation MUST happen *after* the Combine step. 
+*   **The Rationale (Pros):** The evaluation LLM needs to see the *entire* video, including the audio pacing, to provide an accurate, holistic judgment. 
+*   **The Mitigation (Handling Cons):** To mitigate the compute waste of throwing away audio during regression loops, a strict **Audio Caching** rule was explicitly baked into the Orchestrator's `prompt.md`. If the user loops back to heal a video scene, the Agent is instructed to skip audio generation and reuse the existing valid audio track for the new synthesis.
+
+### B. The Death of the "Image Storyboard" 
+*   **The Pivot:** Early agent versions relied heavily on generating a static image storyboard (`GENERATE_STORYBOARD_IMAGE_BATCH_TOOL`) before animating. 
+*   **The Decision:** With the introduction of Veo 3.1's robust `reference_images` support, generating static seed frames became largely obsolete and doubled the wait time. 
+*   **The Outcome:** The Image Storyboard step was entirely stripped from the standard prompt workflow. The agent now moves directly from Script -> Asset Sheet (`GENERATE_ASSET_SHEET_TOOL`) -> Video Batch. This significantly reduced LLM cognitive load and token bloat.
+
+### C. Strict Scene Consistency vs. Loose Demographic Matching
+*   **The Problem:** Initial test runs revealed highly chaotic video outputs where camera angles cut erratically within a single 4-second clip, and the "Hero" actor's face/wardrobe drifted noticeably between scenes because the evaluation agents were too lenient.
+*   **The Solution:** 
+    1.  **Anti-Cut Mandates:** Explicit "Single Action Rules" (NO montages, NO camera cuts within a clip) were injected natively into the `video_director_enhancement_prompt.md`.
+    2.  **Pedantic Identity Checks:** The `video_evaluation_prompt.md` was rewritten to demand *pixel-perfect* replication. Evaluators are now instructed to aggressively FAIL a video if the wardrobe or facial structure deviates even slightly from the Asset Sheet, rather than accepting "similar" demographic matches.
+
+### D. Multi-Product Brand Context Optimization
+*   **The Problem:** Feeding the LLM the entire corporate brand catalog for a single query blew up the context window.
+*   **The Decision:** Instead of hardcoding product logic, `retrieve_brand_identity.py` was refactored with Python `difflib`. It fuzzy matches the user's `product_name` against the GCS catalog, extracts *only* that specific product's data, prunes the massive `products` array from the payload, and hands the optimized, lightweight JSON to the Orchestrator. 
+
+### E. Native Aspect Ratio Plumbing & Strict Portrait Defaults
+*   **The Problem:** Earlier iterations hardcoded `aspect_ratio` defaults deep in the `utils` layer, while the LLM was improperly prompted to make a "judgment call" on whether a prompt sounded like it needed landscape or portrait. This led to hallucinated mismatched aspect ratios across generated images and videos that would break the final `combine_video` flow.
+*   **The Decision:** We surfaced the `aspect_ratio` variable natively up to the Orchestrator's Batch JSON array configuration. However, we explicitly stripped the LLM of its autonomous "judgment call" permission. The strict rule now dictates: The agent MUST default to the `VIDEO_DEFAULT_ASPECT_RATIO` and `IMAGE_DEFAULT_ASPECT_RATIO` (Portrait, 9:16) by omitting the parameter entirely from the API call, *unless* the user explicitly types the words "landscape", "square", "16:9", etc. into their prompt. This ensures 100% consistency downstream while remaining dynamically overridable.
+
+### F. Pre-Flight Duration Validation (The "ShowableException" pattern)
+*   **The Problem:** If the LLM suffered from poor math and requested a `first_frame` video of 7 seconds, Veo 3.1 would reject it 30 seconds later, wasting time and triggering a messy unhandled exception.
+*   **The Decision:** The Python backend (`generate_video.py`) now intercepts the LLM's JSON payload *before* making any API network calls. If the duration constraints (4s, 6s, 8s for `first_frame`, or strictly `8s` for `reference_images`) are violated, it immediately raises a custom `ShowableException` that cleanly returns the math error string directly into the LLM's chat context, forcing it to rewrite the JSON.
+
+### G. Pedantic Script Headers Strategy
+*   **The Problem:** "Context drift" where the LLM forgets the overarching commercial objective by Scene 3.
+*   **The Decision:** We established a strict structural format in the Orchestrator's `prompt.md`. Before calling any batch generation tools, the LLM MUST generate a script with explicit Markdown Headers (`Purpose/Objective`, `Alignment with Guidelines`, and `Global Persistent Visuals`). The `prompt.md` explicitly mandates that the entirety of these headers are passed verbatim into the downstream video tools, ensuring the Veo models are constantly grounded in the global context.
+

@@ -27,17 +27,19 @@ Your job is to identify "AI Tells" (physics/brand errors) and creative flaws.
 ### PASS 2: Brand & Subject (Brand Integrity) -> [subject_and_brand]
 5.  **Forensic Brand Match:** Compare the video logo to the Reference Images. 
     * **Fail Condition:** If the logo is a generic "redrawn" approximation, it is a FAIL. It must match exactly.
+6.  **Cross-Scene Consistency (CRITICAL):** Evaluate whether the primary subject, main characters, and products remain visually identical across all scene cuts.
+    * **Fail Condition:** If Scene 1 features a man, and Scene 2 features a woman, or the product completely changes visual identity/color between cuts, it is an automatic FAIL. The actors, clothing, and products MUST be consistent throughout the entire ad.
 
 ### PASS 3: Creative Quality -> [temporal_flow] & [visual_fidelity]
-6.  **Pacing:** Is the video boring (dead air) or confusing (hyper-fast cuts)?
-7.  **Narrative:** Does the sequence make sense?
+7.  **Pacing:** Is the video boring (dead air) or confusing (hyper-fast cuts)?
+8.  **Narrative:** Does the sequence make sense?
 
 ### PASS 4: Scene-Level Analysis -> [scene_feedback]
-8.  **Granular Review:** Evaluate each distinct scene/shot individually.
+9.  **Granular Review:** Evaluate each distinct scene/shot individually.
     *   **Pass:** Scene is conceptually strong. Minor generative artifacts (texture shimmering, background blur) are strictly ignored.
     *   **Fix:** Scene has prominent focal defects (e.g., legible hero text suddenly mangling, recognizing a blatant camera continuity error).
     *   **Fail:** Scene has catastrophic failures: mangled/melting hands, aggressively morphing faces, wrong primary subject, or catastrophic motion breakdown. Do NOT fail scenes for microscopic detail boiling.
-9.  **Continuity Check:** If you demand a "Fix" for Scene 2, consider if it impacts Scene 1 or 3.
+10. **Continuity Check:** If you demand a "Fix" for Scene 2, consider if it impacts Scene 1 or 3.
 
 ## 3. FEEDBACK INSTRUCTIONS
 

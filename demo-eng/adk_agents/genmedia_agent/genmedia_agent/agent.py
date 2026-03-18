@@ -27,7 +27,7 @@ from adk_common.dtos.generated_media import GeneratedMedia
 from adk_common.dtos.generated_media import GeneratedMedia
 from adk_common.media_generation.image_generation import (text_and_image_to_image,
                                                        text_to_image)
-from adk_common.media_generation.video_generation import text_or_image_to_video
+from adk_common.media_generation.video_generation import generate_video_bytes, VideoModality
 from adk_common.utils import utils_agents, utils_gcs, utils_prompts
 from adk_common.utils.constants import (get_optional_env_var,
                                                get_required_env_var)
@@ -344,15 +344,69 @@ async def _generate_video_from_text_or_image(
         if current_state and isinstance(current_state, list):
             video_index = len(current_state)
             
-        generated_videos = await text_or_image_to_video(
-            vid_prompt=vid_prompt,
-            image_uri=image_uri,
-            duration_seconds=duration_seconds,
-            aspect_ratio=aspect_ratio,
-            tool_context=tool_context,
-            resolution=resolution,
-            video_index=video_index+1
+        from google import genai
+        from google.genai import types
+        from datetime import datetime
+        import mimetypes
+        
+        MODELS_CLOUD_LOCATION = get_required_env_var("MODELS_CLOUD_LOCATION")
+        client = genai.Client(
+            vertexai=True,
+            project=GOOGLE_CLOUD_PROJECT,
+            location=MODELS_CLOUD_LOCATION,
         )
+        
+        initial_frame_image = None
+        if image_uri:
+            image_uri = utils_gcs.normalize_to_gs_bucket_uri(image_uri)
+            print(f"{LOGGING_PREFIX} Reference image GCS URI: `{image_uri}`.")
+            initial_frame_image = types.Image(gcs_uri=image_uri, mime_type="image/png")
+            
+        extracted_videos = await generate_video_bytes(
+            client=client,
+            model=VIDEO_GENERATION_MODEL,
+            prompt=vid_prompt,
+            number_of_videos=1,
+            duration_seconds=int(duration_seconds),
+            aspect_ratio=aspect_ratio,
+            resolution=resolution,
+            person_generation="allow_all",
+            enhance_prompt=True,
+            generate_audio=True,
+            modality=VideoModality.FIRST_FRAME,
+            initial_frame_image=initial_frame_image
+        )
+
+        generated_videos: List[GeneratedMedia] = []
+        for i, (video_bytes, mime_type) in enumerate(extracted_videos):    
+            extension = mimetypes.guess_extension(mime_type)
+
+            prefix = "TI2V_" if image_uri else "T2V_"
+            filename = f"{prefix}{i+video_index}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}{extension}"
+            
+            print(f"{LOGGING_PREFIX} Generated video: filename: {filename}. mime_type: {mime_type}")
+            
+            uploaded_file_uri = utils_gcs.upload_to_gcs(
+                bucket_path=GOOGLE_CLOUD_BUCKET_ARTIFACTS,
+                file_bytes=video_bytes,
+                destination_blob_name=filename,
+            )
+            
+            generated_video = GeneratedMedia(
+                filename=filename,
+                media_bytes=video_bytes,
+                mime_type=mime_type,
+                description=f"Video {i+video_index} generated from prompt: {vid_prompt}",
+                title=f"Video {i+video_index}",
+                gcs_uri= utils_gcs.normalize_to_authenticated_url(uploaded_file_uri)
+            )
+            
+            await utils_agents.save_to_artifact_and_render_asset(
+                asset=generated_video,
+                context=tool_context,
+            )
+            
+            generated_videos.append(generated_video)
         
         _update_agent_state(generated_videos, tool_context, GENMEDIA_VIDEO_OUTPUT_KEY)
         json_response = json.dumps([item.to_obj_sans_bytes() for item in generated_videos])

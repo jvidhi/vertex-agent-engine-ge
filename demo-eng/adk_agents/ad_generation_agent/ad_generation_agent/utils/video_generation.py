@@ -16,7 +16,7 @@ from adk_common.utils.utils_logging import Severity, log_message
 from google import genai
 from google.api_core import exceptions as api_exceptions
 from adk_common.dtos.errors import ShowableException
-from adk_common.media_generation.video_generation import generate_video_bytes
+from adk_common.media_generation.video_generation import generate_video_bytes, VideoModality
 from google.genai.types import (
     GenerateContentConfig,
     GeneratedVideo,
@@ -49,52 +49,7 @@ class VideoGenerationInput:
     scene_number: int
     is_logo_scene: bool = False
     reference_images: List[GeneratedMedia] = field(default_factory=list)
-
-
-
-async def _monitor_video_operation(
-    operation: Any, image_identifier: str, vertex_client: genai.Client
-) -> Tuple[Optional[GeneratedVideo], Optional[str]]:
-    """Monitors a video generation operation until completion."""
-    log_message(
-        f"Submitted video generation request for image {image_identifier}. Operation: {operation.name}",
-        Severity.INFO,
-    )
-
-    while not operation.done:
-        await asyncio.sleep(VIDEO_GENERATION_STATUS_POLL_SECONDS)
-        operation = await vertex_client.aio.operations.get(operation)
-        log_message(
-            f"Operation status for {image_identifier}: {operation.name} - Done: {operation.done}",
-            Severity.INFO,
-        )
-
-    if operation.error:
-        error_message = operation.error.get("message", str(operation.error))
-        log_message(
-            f"ERROR: Operation for {image_identifier} failed with error: {error_message}",
-            Severity.ERROR,
-        )
-        return None, error_message
-    if not (
-        operation.result
-        and hasattr(operation.result, "generated_videos")
-        and operation.result.generated_videos
-    ):
-        op_result = getattr(operation, "result", None)
-        has_gen_videos_attr = hasattr(op_result, "generated_videos") if op_result else False
-        gen_videos_value = getattr(op_result, "generated_videos", None) if has_gen_videos_attr else None
-        
-        log_message(
-            f"No generated videos found for {image_identifier}. \n"
-            f"Operation: {operation}\n"
-            f"Result: {op_result}\n"
-            f"Has 'generated_videos': {has_gen_videos_attr}\n"
-            f"Value of 'generated_videos': {gen_videos_value}",
-            Severity.ERROR,
-        )
-        return None, "No videos found in the response."
-    return operation.result.generated_videos[0], None
+    aspect_ratio: str | None = None
 
 
 def _round_to_nearest_veo_duration(duration: int) -> int:
@@ -110,7 +65,6 @@ async def generate_single_video(
     video_input: VideoGenerationInput,
     tool_context: ToolContext,
     video_semaphore: asyncio.Semaphore,
-    prompt_enhancer: Any = None,
 ) -> Tuple[Optional[Dict[str, str | int]], Optional[str]]:
     """Generates a single video from a given image and prompt. Evaluates and retries with improvements."""
     best_video: Optional[GeneratedVideo] = None
@@ -131,23 +85,20 @@ async def generate_single_video(
             
             from google.genai import types
             
-            ref_images_api = []
             eval_tuples = []
+            initial_frame_image = None
+            
             if video_input.reference_images:
                 for idx, labeled_img in enumerate(video_input.reference_images):
                     if not labeled_img.media_bytes:
                         continue
                         
+                    # Always pass every reference image to the Gemini Evaluator Judge
                     part = types.Part.from_bytes(data=labeled_img.media_bytes, mime_type=labeled_img.mime_type)
                     eval_tuples.append((part, labeled_img.description))
                     
-                    if idx < 3:
-                        ref_images_api.append(
-                            types.VideoGenerationReferenceImage(
-                                image=types.Image(image_bytes=labeled_img.media_bytes, mime_type=labeled_img.mime_type),
-                                reference_type=types.VideoGenerationReferenceType("asset")
-                            )
-                        )
+                    if idx == 0:
+                        initial_frame_image = types.Image(image_bytes=labeled_img.media_bytes, mime_type=labeled_img.mime_type)
 
             utils_agents.geminienterprise_print(
                 tool_context,
@@ -166,12 +117,13 @@ async def generate_single_video(
                         prompt=current_prompt,
                         number_of_videos=1,
                         duration_seconds=video_duration,
-                        aspect_ratio=VIDEO_DEFAULT_ASPECT_RATIO,
+                        aspect_ratio=video_input.aspect_ratio or VIDEO_DEFAULT_ASPECT_RATIO,
                         person_generation="allow_all",
                         enhance_prompt=True,
                         generate_audio=False,
                         fps=VIDEO_FPS,
-                        reference_images=ref_images_api,
+                        modality=VideoModality.FIRST_FRAME,
+                        initial_frame_image=initial_frame_image,
                         max_retries=VIDEO_GENERATION_TENACITY_ATTEMPTS,
                         retry_delay_min=1.0,
                         retry_delay_max=max(1.0, VIDEO_GENERATION_RETRY_DELAY_SECONDS)
@@ -282,7 +234,6 @@ async def generate_single_video_from_ingredients(
     video_input: VideoGenerationInput,
     tool_context: ToolContext,
     video_semaphore: asyncio.Semaphore,
-    prompt_enhancer: Any = None,
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
     """Generates a single video from multiple ingredients and prompt. Evaluates and retries with improvements."""
     best_video: Optional[GeneratedVideo] = None
@@ -340,11 +291,12 @@ async def generate_single_video_from_ingredients(
                         prompt=current_prompt,
                         number_of_videos=1,
                         duration_seconds=video_duration,
-                        aspect_ratio=VIDEO_DEFAULT_ASPECT_RATIO,
+                        aspect_ratio=video_input.aspect_ratio or VIDEO_DEFAULT_ASPECT_RATIO,
                         person_generation="allow_all",
                         enhance_prompt=True,
                         generate_audio=False,
                         fps=VIDEO_FPS,
+                        modality=VideoModality.REFERENCE_IMAGES,
                         reference_images=ref_images_api,
                         max_retries=VIDEO_GENERATION_TENACITY_ATTEMPTS,
                         retry_delay_min=1.0,

@@ -1,13 +1,14 @@
 {{IMAGE_PROMPT}}
 
 **IMPORTANT GUIDELINES TO REINFORCE**:
-* Ensure the images generated follow all guidance provided in the asset sheet, most especially product & character consistency.
+* Ensure the images generated follow all guidance provided in the reference images, most especially product & character consistency.
 * **CRITICAL ANTI-COLLAGE MANDATE:** The image will be used as the first frame for a video scene. It is **IMPERATIVE THAT YOU AVOID GENERATING COLLAGES**, side-by-side comparisons, mood boards, text overlays, or multiple shots in the same image. It must be a **SINGLE, UNIFIED, OUT-OF-CAMERA CINEMATIC SHOT** detailing a single moment in time.
+* **CRITICAL PRODUCT PRESENCE & FIDELITY:** If a PRODUCT IMAGE is attached, you MUST explicitly include the product visibly within this first frame. Do NOT hide the product off-camera or obscure it. You MUST perfectly replicate its structural design, textures, and exact brand colorways. Do NOT invent new designs, generic apparel, or alternative product features. The generated product must be indistinguishable from the reference.
 * If the scene has the logo of the company, make sure it is visible, clear, and perfectly accurate.
 
 **STYLE MANDATE**:
-* Unless a specific art style is requested in the prompt (e.g., Claymation, 3D Render, Line Art), the image MUST be **Hyper-Realistic** and **Photorealistic**.
-* Default to Hyper-Realistic if no style is specified.
+* Unless a specific art style is requested in the prompt (e.g., Claymation, 3D Render, Line Art, Cartoon), the image MUST be **Hyper-Realistic** and a **Photorealistic Photograph**.
+* Default to Hyperrealistic Photorealistic Photograph if no style is specified.
 * Avoid any 'AI smoothness', cartoonish effects, or unnatural lighting.
 * Textures (skin, fabric, materials) must be indistinguishable from real life.
 

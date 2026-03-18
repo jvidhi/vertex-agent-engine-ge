@@ -26,7 +26,7 @@ from ad_generation_agent.utils.image_generation import \
     generate_and_select_best_image
 from adk_common.dtos.generated_media import GeneratedMedia
 from adk_common.utils import utils_agents
-from adk_common.utils.utils_logging import (Severity, log_message)
+from adk_common.utils.utils_logging import (Severity, log_function_call, log_message)
 from google.adk.tools.tool_context import ToolContext
 from google.api_core import exceptions as api_exceptions
 from google.genai import types
@@ -34,7 +34,7 @@ from google.genai import types
 from adk_common.utils.constants import get_required_env_var
 RENDER_IMAGES_INLINE = get_required_env_var("RENDER_IMAGES_INLINE").lower() in ("true", "1", "yes")
 
-# @log_function_call
+@log_function_call
 async def generate_asset_sheet(
     storyline: str,
     tool_context: ToolContext,
@@ -47,6 +47,7 @@ async def generate_asset_sheet(
     reference_images: List[str] = [],
     previous_asset_sheet_uri: str = "",
     logo_image_uri: str = "",
+    aspect_ratio: str | None = None,
 ) -> Dict[str, Any]:
     """Generates a visual asset sheet for a marketing campaign.
 
@@ -71,6 +72,7 @@ async def generate_asset_sheet(
         previous_asset_sheet_uri (str, optional): A URI or path to a previously generated
             asset sheet that should be used as a base for refinement. Defaults to "".
         logo_image_uri (str, optional): A URI or path to the brand logo. Defaults to "".
+        aspect_ratio (str, optional): The desired aspect ratio (e.g., "16:9", "9:16", "1:1"). If not provided, it falls back to the workspace default (IMAGE_DEFAULT_ASPECT_RATIO).
 
     Returns:
         Dict[str, Any]: The result containing the asset sheet filename and URI.
@@ -111,7 +113,10 @@ async def generate_asset_sheet(
                 "Do NOT guess or hallucinate URLs.\n" 
                 + "\n".join(invalid_urls)
             )
-            raise RuntimeError(error_msg)
+            return {
+                "status": "failed",
+                "detail": error_msg
+            }
 
         save_state_property(tool_context, ad_generation_constants.STATE_KEY_PRODUCT_IMAGE_URL, final_product_uri)
         save_state_property(tool_context, ad_generation_constants.STATE_KEY_PRODUCT_NAME, product_name)
@@ -155,6 +160,8 @@ async def generate_asset_sheet(
                 f"Visual Style Guide: {visual_style_guide}",
                 f"Brand Guidelines: {brand_guidelines}",
             ]
+            if aspect_ratio:
+                description_parts.append(f"Aspect Ratio: {aspect_ratio}")
             if prompt:
                 description_parts.append(f"Additional Instructions: {prompt}")
             if product_image_reference:
@@ -185,8 +192,13 @@ async def generate_asset_sheet(
             return response
 
     except Exception as e:
-        log_message(f"Error in generate_asset_sheet: {e}", Severity.ERROR)
-        raise e
+        error_msg = f"Error in generate_asset_sheet: {str(e)}"
+        log_message(error_msg, Severity.ERROR)
+        return {
+            "status": "failed", 
+            "detail": error_msg,
+            "system_instruction": "Asset Sheet generation failed (likely 429 Resource Exhausted or safety filter). Do NOT crash. Tell the user what happened."
+        }
 
 
 # @log_function_call
@@ -246,6 +258,7 @@ async def _create_asset_sheet_generation_task(
     main_character_url: str | None = None,
     reference_images_uris: List[str] | None = None,
     previous_asset_sheet_uri: str | None = None,
+    aspect_ratio: str | None = None,
 ) -> Dict[str, Any] | None:
     """Generates and evaluates asset sheet images, saving the best one.
 
@@ -265,6 +278,10 @@ async def _create_asset_sheet_generation_task(
         Dict[str, Any] containing the `generate_and_select_best_image` results.
     """
     utils_agents.geminienterprise_print(tool_context, "Generating asset sheet image...")
+
+    from adk_common.utils.constants import get_required_env_var
+    default_aspect_ratio = get_required_env_var("IMAGE_DEFAULT_ASPECT_RATIO")
+    final_aspect_ratio = aspect_ratio or default_aspect_ratio # Agent suggestion takes priority
 
     reference_image_parts = []
     image_descriptions = []
@@ -347,4 +364,5 @@ async def _create_asset_sheet_generation_task(
         prompt=image_prompt,
         input_images=reference_image_parts,
         allow_collage=True,
+        aspect_ratio=final_aspect_ratio,
     )

@@ -21,6 +21,7 @@ class Defect(BaseModel):
     timestamp: str
     category: str
     description: str
+    tier: int
 
 
 class CategoryScores(BaseModel):

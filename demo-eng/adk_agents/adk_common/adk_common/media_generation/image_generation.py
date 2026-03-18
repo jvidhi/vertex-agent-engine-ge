@@ -83,9 +83,12 @@ async def generate_image_bytes(
             reraise=True
         ):
             with attempt:
+                final_aspect_ratio = aspect_ratio or IMAGE_DEFAULT_ASPECT_RATIO
+
                 config = types.GenerateContentConfig(
                     response_modalities=["IMAGE"],
-                    media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH
+                    media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH,
+                    image_config=types.ImageConfig(aspect_ratio=final_aspect_ratio)
                 )
                 
                 response = await client.aio.models.generate_content(
