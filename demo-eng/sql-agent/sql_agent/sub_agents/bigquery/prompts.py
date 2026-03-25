@@ -37,7 +37,8 @@ def return_instructions_bigquery() -> str:
 
       Use the provided tools to help generate the most accurate SQL:
       1. First, use {db_tool_name} tool to generate initial SQL from the question.
-      2. You should also validate the SQL you have created for syntax and function errors (Use run_bigquery_validation tool). If there are any errors, you should go back and address the error in the SQL. Recreate the SQL based by addressing the error.
+      2. You should also validate the SQL you have created for syntax and function errors (Use run_bigquery_validation tool and BuiltInCodeExecutionTool).
+      3. Use the code_execution tool to evaluate the SQL code's logic if there's any complexity. If there are any errors, you should go back and address the error in the SQL.
       4. Generate the final result in JSON format with four keys: "explain", "sql", "sql_results", "nl_results".
           "explain": "write out step-by-step reasoning to explain how you are generating the query based on the schema, example, and question.",
           "sql": "Output your generated SQL!",
