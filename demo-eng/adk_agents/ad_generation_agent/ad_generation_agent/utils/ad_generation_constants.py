@@ -10,5 +10,6 @@ STATE_KEY_LOGO_IMAGE_URL = "logo_image_url"
 STATE_KEY_MAIN_CHARACTER_URL = "main_character_url"
 STATE_KEY_ASSET_SHEET_URL = "asset_sheet_url"
 STATE_KEY_BRAND_CONTEXT_PAYLOAD = "brand_context_payload"
+STATE_KEY_LAST_ERROR = "last_error"
 
 SESSIONS_PREFIX = "sessions"
