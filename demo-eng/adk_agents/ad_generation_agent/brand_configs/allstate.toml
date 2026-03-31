@@ -1,6 +1,6 @@
 brand_name = "allstate"
-logo_image_url = "https://storage.cloud.google.com/allstate_demo_20251205/Allstate-logo.jpg"
-main_character_url = "https://storage.cloud.google.com/allstate_demo_20251205/tom.png"
+logo_image_url = "https://storage.cloud.google.com/jvidhi-agents/allstate_brand/tom_logo.png"
+main_character_url = "https://storage.cloud.google.com/jvidhi-agents/allstate_brand/tom_character.png"
 
 brand_guidelines = """
 ### 1. Brand Identity & Purpose

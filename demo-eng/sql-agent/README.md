@@ -20,7 +20,6 @@ Here are the key components of the project:
         * `utils/` - Contains common utilities and helper functions.
         * `sub_agents/`
             * `bigquery/`
-                * `chase_sql/` - Contains the Chase SQL agent and its utilities.
                 * `agent.py` - Main bigquery sub-agent.
                 * `prompts.py` - Prompts for the bigquery sub-agent.
                 * `tools.py` - Tools for the bigquery sub-agent.
@@ -31,7 +30,7 @@ Here are the key components of the project:
 
 To set up your local environment, run the following commands:
 
-Stand within the `marketing_agent` directory.
+Stand within the `sql-agent` directory.
 
 ```bash
 poetry config virtualenvs.in-project true #Optional but helpful for vscode
@@ -108,10 +107,10 @@ BQML_RAG_CORPUS_NAME='' # Leave this empty as it will be populated automatically
 CODE_INTERPRETER_EXTENSION_NAME='' # Either '' or 'projects/{GOOGLE_CLOUD_PROJECT}/locations/us-central1/extensions/{EXTENSION_ID}'
 
 # Models used in Agents
-ROOT_AGENT_MODEL='gemini-2.5-flash'
-BIGQUERY_AGENT_MODEL='gemini-2.5-flash'
-BASELINE_NL2SQL_MODEL='gemini-2.5-flash'
-CHASE_NL2SQL_MODEL='gemini-2.5-flash'
+ROOT_AGENT_MODEL='gemini-3-flash-preview'
+BIGQUERY_AGENT_MODEL='gemini-3-flash-preview'
+BASELINE_NL2SQL_MODEL='gemini-3-flash-preview'
+CHASE_NL2SQL_MODEL='gemini-3-flash-preview'
 
 #Used for logging and confirming correct deployment
 DEMO_AGENT_DISPLAY_NAME="Cymbal BQ Agent"

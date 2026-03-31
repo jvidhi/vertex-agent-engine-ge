@@ -167,19 +167,19 @@ This configuration includes the Orchestrator's settings **PLUS** all required va
         "AGENT_VERSION": "3.20251118.1",
         "IS_DEBUG_ON": "1",
         
-        "LLM_GEMINI_MODEL_ROOT": "gemini-2.5-flash",
+        "LLM_GEMINI_MODEL_ROOT": "gemini-3-flash-preview",
         
-        "LLM_GEMINI_MODEL_ADGEN_ROOT": "gemini-2.5-flash",
-        "LLM_GEMINI_MODEL_ADGEN_SUBCALLS": "gemini-2.5-flash",
-        "LLM_GEMINI_MODEL_EVALUATION": "gemini-2.5-flash",
-        "LLM_GEMINI_MODEL_GENMEDIA": "gemini-2.5-flash",
-        "LLM_GEMINI_MODEL_MARKETING_ANALYST": "gemini-2.5-flash",
+        "LLM_GEMINI_MODEL_ADGEN_ROOT": "gemini-3-flash-preview",
+        "LLM_GEMINI_MODEL_ADGEN_SUBCALLS": "gemini-3-flash-preview",
+        "LLM_GEMINI_MODEL_EVALUATION": "gemini-3-flash-preview",
+        "LLM_GEMINI_MODEL_GENMEDIA": "gemini-3-flash-preview",
+        "LLM_GEMINI_MODEL_MARKETING_ANALYST": "gemini-3-flash-preview",
         
-        "IMAGE_GENERATION_MODEL": "imagen-4.0-ultra-generate-001",
+        "IMAGE_GENERATION_MODEL": "gemini-3-pro-image-preview",
         "VIDEO_GENERATION_MODEL": "veo-3.1-generate-preview",
         "STORYBOARD_GENERATION_MODEL": "gemini-3-pro-image-preview",
         "IMAGE_EDITION_MODEL": "gemini-3-pro-image-preview",
-        "AUDIO_TTS_GENERATION_MODEL": "gemini-2.5-pro-tts",
+        "AUDIO_TTS_GENERATION_MODEL": "gemini-3-pro-tts",
         "AUDIO_LYRIA_GENERATION_MODEL": "lyria-002",
         
         "MARKETING_ANALYST_DATASTORE_ID": "projects/...",

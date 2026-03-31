@@ -24,6 +24,8 @@ from google.adk.tools.tool_context import ToolContext
 from adk_common.dtos.generated_media import GeneratedMedia
 
 
+from ad_generation_agent.utils import ad_generation_constants
+
 GOOGLE_CLOUD_BUCKET_ARTIFACTS = get_required_env_var("GOOGLE_CLOUD_BUCKET_ARTIFACTS")
 
 
@@ -87,7 +89,7 @@ async def retrieve_generated_assets(
                          # If it's just a filename with no directory structure, valid for root prefix
                          target_prefix = ""
         else:
-            target_prefix = current_session_id
+            target_prefix = f"{ad_generation_constants.SESSIONS_PREFIX}/{current_session_id}"
         
         log_message(f"Retrieving generated assets from prefix: {target_prefix}", Severity.INFO)
         
@@ -110,8 +112,8 @@ async def retrieve_generated_assets(
             "assets": assets
         }
         
-        if not assets and target_prefix != current_session_id:
-            response["additional_details"] = f"Please note that the current session's folder is `{current_session_id}`, you determine if you need to call this tool again to retrieve assets from said folder."
+        if not assets and target_prefix != f"{ad_generation_constants.SESSIONS_PREFIX}/{current_session_id}":
+            response["additional_details"] = f"Please note that the current session's folder is `{ad_generation_constants.SESSIONS_PREFIX}/{current_session_id}`, you determine if you need to call this tool again to retrieve assets from said folder."
         
         log_message(f"Retrieved {len(assets)} assets from {target_prefix}.", Severity.INFO)
         return response

@@ -41,12 +41,16 @@ DEMO_COMPANY_NAME = get_optional_env_var("DEMO_COMPANY_NAME", "ACME Corp")
 
 # --- 2. Configure Model Location ---
 # Initialize Vertex AI
-MODEL_LOCATION = get_required_env_var("GOOGLE_CLOUD_LOCATION")
+MODEL_LOCATION = get_required_env_var("MODELS_CLOUD_LOCATION")
+
+# Overwrite GOOGLE_CLOUD_LOCATION with MODELS_CLOUD_LOCATION to ensure consistency
+# in all SDK calls that might default to GOOGLE_CLOUD_LOCATION.
+os.environ["GOOGLE_CLOUD_LOCATION"] = MODEL_LOCATION
 
 log_message(f"GOOGLE_CLOUD_PROJECT: {GOOGLE_CLOUD_PROJECT}", Severity.DEBUG)
 log_message(f"LLM_GEMINI_MODEL_ADGEN_ROOT: {LLM_GEMINI_MODEL_ADGEN_ROOT}", Severity.DEBUG)
 log_message(f"Model location set to: {MODEL_LOCATION}", Severity.DEBUG)
-log_message(f"Effective GOOGLE_CLOUD_LOCATION for genai client: {os.environ.get('GOOGLE_CLOUD_LOCATION')}", Severity.DEBUG)
+log_message(f"Effective MODELS_CLOUD_LOCATION for genai client: {os.environ.get('MODELS_CLOUD_LOCATION')}", Severity.DEBUG)
 log_message(f"GOOGLE_GENAI_USE_VERTEXAI: {os.environ.get('GOOGLE_GENAI_USE_VERTEXAI')}", Severity.DEBUG)
 
 # This configures the default location for calls made *directly* through the vertexai SDK
@@ -83,6 +87,7 @@ from .func_tools.generate_video import (
 from .func_tools.retrieve_generated_assets import retrieve_generated_assets
 from .func_tools.evaluate_ad import evaluate_ad
 from .func_tools.retrieve_brand_identity import retrieve_brand_identity
+from .func_tools.save_text_artifact import save_text_artifact
 from .utils.storytelling import STORYTELLING_INSTRUCTIONS
 
 
@@ -120,6 +125,7 @@ async def _dynamic_instruction_provider(
             "EVALUATE_AD_TOOL": evaluate_ad.__name__,
             "RETRIEVE_BRAND_IDENTITY_TOOL": retrieve_brand_identity.__name__,
             "CONFIRM_URL_EXISTS_TOOL": confirm_url_exists.__name__,
+            "SAVE_TEXT_ARTIFACT_TOOL": save_text_artifact.__name__,
         }
     )
     return prompt
@@ -164,6 +170,7 @@ root_agent = LlmAgent(
         FunctionTool(func=evaluate_ad),
         FunctionTool(func=retrieve_brand_identity),
         FunctionTool(func=confirm_url_exists),
+        FunctionTool(func=save_text_artifact),
     ],
     before_tool_callback=_before_tool_callback,
 )

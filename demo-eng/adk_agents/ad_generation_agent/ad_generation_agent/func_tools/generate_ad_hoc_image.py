@@ -257,7 +257,7 @@ async def generate_ad_hoc_image(
                 context=tool_context,
                 save_in_gcs=True,
                 save_in_artifacts=RENDER_IMAGES_INLINE,
-                gcs_folder=utils_agents.get_or_create_unique_session_id(tool_context),
+                gcs_folder=f"{ad_generation_constants.SESSIONS_PREFIX}/{utils_agents.get_or_create_unique_session_id(tool_context)}",
             )
     
             log_message(f"[generate_ad_hoc_image] Image generation successful. New image URI: {generated_media.gcs_uri}", Severity.INFO)

@@ -151,7 +151,7 @@ async def generate_asset_sheet(
                 context=tool_context,
                 save_in_gcs=True,
                 save_in_artifacts=RENDER_IMAGES_INLINE,
-                gcs_folder=utils_agents.get_or_create_unique_session_id(tool_context),
+                gcs_folder=f"{ad_generation_constants.SESSIONS_PREFIX}/{utils_agents.get_or_create_unique_session_id(tool_context)}",
             )
             
             description_parts = [

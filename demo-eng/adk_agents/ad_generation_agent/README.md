@@ -50,6 +50,8 @@ ad_generation_agent/
 - Python 3.11+
 - Google Cloud SDK (`gcloud`)
 
+### Setting up some test data in GCS
+
 ### 1. Unified Sync
 Run these commands from the **workspace root** (`adk_agents`):
 ```bash
@@ -66,26 +68,55 @@ gcloud config set project <YOUR-PROJECT-ID>
 # Enable APIs
 gcloud services enable \
     aiplatform.googleapis.com \
-    texttospeech.googleapis.com \
     storage.googleapis.com \
     cloudresourcemanager.googleapis.com
 ```
 
-### 3. Local Testing
+### 3. Environment Configuration
+Create a `.env` file in the project root with the required variables (see [Configuration](#-configuration-env-vars)).
+
+> [!IMPORTANT]
+> The `DEMO_COMPANY_NAME` you choose must have a corresponding `<brandname>.toml` file in the `brand_configs/` directory (e.g., `brand_configs/vantus.toml`). You must then run the `create_reference_images.py` script for that brand name (see below) to generate reference assets and sync your configurations to GCS.
+
+### 4. Reference Image Generation (Optional)
+You can use the standalone script to generate high-quality reference images and automatically upload them (along with your brand configurations) to GCS.
+
+**Example 1: Initialize Brand Assets (Logo & Character)**
+This will use Gemini to generate brand-aligned prompts based on your `.toml` config and create a sample logo and character.
+```bash
+uv run python create_reference_images.py --init
+```
+
+**Example 2: Generate a specific product reference**
+```bash
+uv run python create_reference_images.py \
+    --prompt "A luxurious, organic facial cream in a frosted glass jar, surrounded by fresh aloe vera leaves and white flowers, high-end commercial photography style" \
+    --filename "organic_cream_luxury"
+```
+
+**Example 2: Generate a lifestyle reference with specific aspect ratio**
+```bash
+uv run python create_reference_images.py \
+    --prompt "A woman using a high-end smartphone in a modern, sunlit cafe, cinematic lighting, 8k resolution" \
+    --filename "smartphone_lifestyle" \
+    --aspect_ratio "16:9"
+```
+
+### 5. Local Testing
 Launch the ADK Web UI from the **workspace root**:
 ```bash
 uv run adk web
 ```
 
-### 4. Running Agentic Evaluations
+### 6. Running Agentic Evaluations
 This agent uses the `AgentEvaluator` to deterministically test LLM trajectories and tool routing against deterministic JSON configuration files via a unified script. **All structural evaluation JSONs MUST reside in the singular, top-level `/evals` directory alongside the unifying `test_config.json` file. Do not nest them.**
-* **CI/CD Execution**: To automatically discover and run all tests, use PyTest:
+* **CI/CD Execution**: To automatically discover and run all tests, use PyTest and capture logs:
   ```bash
-  uv run pytest ad_generation_agent/test_evals.py
+  uv run pytest test_evals.py > eval_results/pytest_run.log 2>&1
   ```
 * **Manual Execution (CLI)**: To run a specific test and capture verbose execution traces locally to a timestamped file in `eval_results/`, execute it as a Python script:
   ```bash
-  uv run python ad_generation_agent/test_evals.py evals/storyboard_hierarchy.test.json
+  uv run python test_evals.py evals/storyboard_hierarchy.test.json
   ```
 
 ---
@@ -105,12 +136,13 @@ All variables are required either in `.env` (local) or the deployment JSON.
 | `AGENT_VERSION` | Version tag for state/deployment. | `4.20260219.1` |
 | `DEMO_COMPANY_NAME` | Fictitious brand name. | `ACME Corp` |
 
+
 ### Models (LLM)
 | Variable | Description | Default |
 | :--- | :--- | :--- |
-| `LLM_GEMINI_MODEL_ADGEN_ROOT` | Orchestrator model. | `gemini-2.5-flash` |
-| `LLM_GEMINI_MODEL_ADGEN_SUBCALLS` | Sub-task/Storytelling model. | `gemini-2.5-flash` |
-| `LLM_GEMINI_MODEL_EVALUATION` | Media evaluation model. | `gemini-2.5-flash` |
+| `LLM_GEMINI_MODEL_ADGEN_ROOT` | Orchestrator model. | `gemini-3-pro-preview` |
+| `LLM_GEMINI_MODEL_ADGEN_SUBCALLS` | Sub-task/Storytelling model. | `gemini-3-pro-preview` |
+| `LLM_GEMINI_MODEL_EVALUATION` | Media evaluation model. | `gemini-3-pro-preview` |
 
 ### Models (Media Generation)
 | Variable | Description | Default |
@@ -198,6 +230,24 @@ gcloud projects add-iam-policy-binding [PROJECT_ID] \
     --member="serviceAccount:${SERVICE_ACCOUNT}" \
     --role="roles/bigquery.jobUser"
 ```
+
+---
+
+## 🎬 Sample Prompts
+
+Here are a few ways to get started with the Ad Generation Agent. You can paste these directly into the chat:
+
+### 1. The "All-in-One" Request
+> "I want to create a 15-second video ad for our new **Organic Aloe Vera Face Cream**. Do all steps automatically and show me the final video. Our brand is **Organic Living**."
+
+### 2. The Step-by-Step Creative Approach
+> "Hi! I'm working with **Vantus**. We want to feature the **Vantus Sport Watch**. Let's start by searching for our brand assets and then I'd like to see a few different storyline options before we generate any images."
+
+### 3. Lifestyle & Character Focus
+> "Create a high-end commercial for **Allstate**. The ad should feature a young family in their first home, feeling secure and happy. Let's generate a character sheet for the family first to make sure the look is consistent across the scenes."
+
+### 4. Quick Static Asset Generation
+> "I just need a quick high-quality display ad for the **Vantus Wireless Earbuds**. Use a 'cyberpunk' aesthetic with neon blue and purple lighting. Include the headline 'Sound of the Future'."
 
 ---
 

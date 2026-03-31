@@ -2,6 +2,28 @@
 
 The **GenMedia Agent** is a specialized sub-agent responsible for all media generation and editing tasks within the workspace. It handles Image Generation, Video Generation, Audio/TTS, and Storyboard creation.
 
+# 🗣️ How to Communicate & Prompt
+To get the best results from the GenMedia Agent, follow these best practices for prompting. The agent translates your requests into detailed prompts for underlying generative models (Imagen, Veo, etc.).
+### 💡 Best Practices
+1.  **Specify Media Type Clearly**: Always state whether you want an **IMAGE** or a **VIDEO**.
+2.  **Provide Rich Details**: Include subject, setting, action, artistic style (e.g., `cinematic realism`, `pencil sketch`, `3D render`), and mood.
+3.  **Reference Context**: When editing or animating, clearly refer to previous assets (e.g., "animate the last image generated" or "change the background of the skier image").
+4.  **Define Parameters**: Specify aspect ratios (e.g., `16:9`, `9:16`, `1:1`) and video durations (e.g., `4`, `6`, `8` seconds). If omitted, defaults will apply.
+5.  **Avoid Collages**: The agent is optimized for single, coherent scenes. Do not ask for grids or side-by-side comparisons in a single file.
+---
+### 📖 Examples
+#### 🌠 1. Text-to-Image
+> **Prompt:** "Create a photorealistic image of a vintage red sports car driving through a neon-lit cyberpunk city at night. Use a 16:9 aspect ratio."
+#### ✏️ 2. Image-to-Image (Editing)
+> **Prompt:** "Take the image of the vintage red car we just generated and change the color of the car to a sleek midnight blue. Keep everything else the same."
+#### 🎬 3. Text-to-Video
+> **Prompt:** "Generate a 6-second video of an astronaut floating in space with the Earth visible in the background. The mood should be serene with ambient space music."
+#### 🎞️ 4. Image-to-Video (Animation)
+> **Prompt:** "Animate the image of the blue sports car. Show it accelerating down the highway with dynamic motion blur. Make it 4 seconds long."
+#### 📋 5. Storyboard Creation
+> **Prompt:** "Create a 3-scene storyboard for a coffee commercial. Use the style of a warm, cozy cafe. Scene 1: Pouring coffee. Scene 2: Steam rising. Scene 3: A smiling person taking a sip."
+
+
 ## 🏗️ Architecture
 
 This agent is typically orchestrator-driven but can be run standalone for testing.
@@ -16,11 +38,11 @@ The following environment variables are required for this agent to function.
 ### Core Model Configuration
 | Variable | Description | Default | Options |
 | :--- | :--- | :--- | :--- |
-| `LLM_GEMINI_MODEL_GENMEDIA` | Main LLM used by this agent's logic. | `gemini-2.5-flash` | `gemini-2.5-flash`, `gemini-2.5-pro` |
-| `IMAGE_GENERATION_MODEL` | Imagen model for creating images. | `imagen-4.0-ultra-generate-001` | `imagen-4.0-generate-001`, `imagen-4.0-ultra-generate-001` |
+| `LLM_GEMINI_MODEL_GENMEDIA` | Main LLM used by this agent's logic. | `gemini-3-flash-preview` | `gemini-2.5-flash`, `gemini-2.5-pro` |
+| `IMAGE_GENERATION_MODEL` | Imagen model for creating images. | `gemini-3-pro-image-preview` | `imagen-4.0-generate-001`, `imagen-4.0-ultra-generate-001` |
 | `IMAGE_GENERATION_MODEL` | Model for generating images. | `gemini-3.1-flash-image-preview` | `imagen-3.0-generate-001`, `gemini-2.5-flash-image` |
 | `VIDEO_GENERATION_MODEL` | Veo model for video generation. | `veo-3.1-generate-preview` | `veo-3.1-generate-preview`, `veo-3.1-fast-generate-preview` |
-| `AUDIO_TTS_GENERATION_MODEL` | Text-to-Speech model. | `gemini-2.5-pro-tts` | `gemini-2.5-pro-tts` |
+| `AUDIO_TTS_GENERATION_MODEL` | Text-to-Speech model. | `gemini-3-pro-tts` | `gemini-2.5-pro-tts` |
 | `AUDIO_LYRIA_GENERATION_MODEL` | Music generation mode. | `lyria-002` | `lyria-002` |
 
 ### Generation Parameters

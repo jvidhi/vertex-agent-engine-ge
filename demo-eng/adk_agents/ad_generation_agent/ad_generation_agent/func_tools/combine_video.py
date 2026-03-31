@@ -271,9 +271,7 @@ async def _combine_and_upload_video(
             generated_media,
             context=tool_context,
             save_in_gcs=True,
-            gcs_folder=utils_agents.get_or_create_unique_session_id(
-                tool_context
-            ),
+            gcs_folder=f"{ad_generation_constants.SESSIONS_PREFIX}/{utils_agents.get_or_create_unique_session_id(tool_context)}",
             # We already saved it manually above with inline data
             save_in_artifacts=RENDER_VIDEOS_INLINE,
         )

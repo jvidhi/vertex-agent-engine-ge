@@ -3,7 +3,6 @@ name = "sql-agent"
 version = "20250902.1"
 description = ""
 authors = [
-    {name = "Gonzalo Varela",email = "gvarelal@google.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.13,<4.0"

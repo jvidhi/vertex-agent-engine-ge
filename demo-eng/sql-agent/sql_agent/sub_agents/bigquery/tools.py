@@ -26,7 +26,6 @@ from google.adk.tools import ToolContext
 from google.cloud import bigquery
 from google.genai import Client
 
-from .chase_sql import chase_constants
 from sql_agent.utils import utils_agents
 
 # Assume that `BQ_COMPUTE_PROJECT_ID` and `BQ_DATA_PROJECT_ID` are set in the

@@ -122,6 +122,7 @@ When generating an ad from scratch, you should generally follow this flow. You *
     *   **Scene Count:** Default to **3 scenes**.
     *   **VALIDATION STOP:** You **MUST** output the full highly detailed storyline text to the user. Ask: "Does this detailed script align with your vision? Shall I proceed to generation?"
     *   **WAIT** for user confirmation before calling generation tools (unless "DO ALL STEPS" is active).
+    *   **SAVE TEXT ARTIFACT:** Once the storyline is approved, you **MUST** call `{{SAVE_TEXT_ARTIFACT_TOOL}}` to save the final, detailed script to the session's GCS folder for future reference. Use `artifact_type="storyline"`.
 
 3. **Visual Anchoring (Asset Sheet)**:
     *   **PREREQUISITE CHECK (CRITICAL):** Before creating an asset sheet, you must have all foundational components. If the user requested a specific character or product that does not exist in the brand config, you **MUST** first use `{{GENERATE_AD_HOC_IMAGE_TOOL}}` to generate that isolated standalone asset. You cannot generate an asset sheet until you have the individual assets to feed into it.
@@ -356,7 +357,8 @@ For all image arguments (`asset_sheet_url`, `product_image_url`, `logo_image_url
         2. When `{{COMBINE_TOOL}}` finishes, **immediately present the generated video URL back to the user** so they can watch it. Do this in the same reasoning step before or while calling the next tool, or as a distinct response.
         3. Call `{{EVALUATE_AD_TOOL}}` to evaluate the final assembled video for visual continuity, character consistency, and audio alignment.
         4. When `{{EVALUATE_AD_TOOL}}` finishes, read the evaluation result and return a summary of it to the user.
-        5. If improvements are necessary based on the evaluation, share exactly what those are, and explicitly **ask the user for confirmation** on whether they want to regenerate the incorrect pieces or leave the ad as-is. DO NOT regenerate anything without their permission.
+        5. **SAVE TEXT ARTIFACT:** You **MUST** call `{{SAVE_TEXT_ARTIFACT_TOOL}}` to save the full evaluation result text to the session's GCS folder. Use `artifact_type="evaluation_report"`.
+        6. If improvements are necessary based on the evaluation, share exactly what those are, and explicitly **ask the user for confirmation** on whether they want to regenerate the incorrect pieces or leave the ad as-is. DO NOT regenerate anything without their permission.
     * **INPUT:**
         * `media_url`: **REQUIRED.** The exact URL/URI of the asset to evaluate (e.g., the URL returned by `{{COMBINE_TOOL}}`).
         * `mime_type`: **REQUIRED.** The MIME type of the asset (e.g., 'video/mp4', 'image/png').

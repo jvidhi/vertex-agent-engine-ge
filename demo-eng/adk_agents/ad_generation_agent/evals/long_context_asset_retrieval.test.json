@@ -11,7 +11,7 @@
           "user_content": {
             "parts": [
               {
-                "text": "Hi! We are starting a new campaign for Catalyst Shoes. We are promoting the Catalyst Shoes shoes. Here are the approved assets we will use for the entire session. Product: https://storage.googleapis.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_jeans.png. Character: https://storage.googleapis.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_sweater.png. Logo: https://storage.googleapis.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_logo.png."
+                "text": "Hi! We are starting a new campaign for Catalyst Shoes. We are promoting the Catalyst Shoes shoes. Here are the approved assets we will use for the entire session. Product: https://storage.googleapis.com/jvidhi-agents/brand_configs/vantus/vantus_jeans.png. Character: https://storage.googleapis.com/jvidhi-agents/brand_configs/vantus/vantus_sweater.png. Logo: https://storage.googleapis.com/jvidhi-agents/brand_configs/vantus/vantus_logo.png."
               }
             ],
             "role": "user"

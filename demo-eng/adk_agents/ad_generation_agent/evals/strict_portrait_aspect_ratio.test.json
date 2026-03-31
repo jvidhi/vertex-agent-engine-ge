@@ -42,7 +42,7 @@
           "user_content": {
             "parts": [
               {
-                "text": "Generate a raw video ad with a gritty urban background. Use 9:16 aspect ratio. Here is the product URL: https://storage.cloud.google.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_logo.png. Here is the character profile URL: https://storage.cloud.google.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_logo.png. Run autonomously and generate the video directly without asking for intermediate script or image approval. Stop immediately after generating the video batch. Do NOT generate audio, do NOT combine the video, and do NOT evaluate it."
+                "text": "Generate a raw video ad with a gritty urban background. Use 9:16 aspect ratio. Here is the product URL: https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_logo.png. Here is the character profile URL: https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_logo.png. Run autonomously and generate the video directly without asking for intermediate script or image approval. Stop immediately after generating the video batch. Do NOT generate audio, do NOT combine the video, and do NOT evaluate it."
               }
             ],
             "role": "user"

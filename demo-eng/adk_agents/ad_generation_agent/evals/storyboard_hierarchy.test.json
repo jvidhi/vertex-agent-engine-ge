@@ -71,7 +71,7 @@
           "user_content": {
             "parts": [
               {
-                "text": "Take the previous storyline script and generate the visual storyboard flow for Cymbal. Here is the product URL: https://storage.cloud.google.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_logo.png. Here is the character profile URL: https://storage.cloud.google.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_logo.png. Here is the logo URL: https://storage.cloud.google.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_logo.png. Run autonomously directly without asking for intermediate script or image approval."
+                "text": "Take the previous storyline script and generate the visual storyboard flow for Cymbal. Here is the product URL: https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_logo.png. Here is the character profile URL: https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_logo.png. Here is the logo URL: https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_logo.png. Run autonomously directly without asking for intermediate script or image approval."
               }
             ],
             "role": "user"

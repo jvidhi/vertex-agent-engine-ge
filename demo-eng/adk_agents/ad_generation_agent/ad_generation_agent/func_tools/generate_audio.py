@@ -34,15 +34,14 @@ from adk_common.utils.utils_logging import (Severity, log_function_call,
                                             log_message)
 from google.adk.tools.tool_context import ToolContext
 from google.api_core import exceptions as api_exceptions
-from google.cloud import texttospeech
 from google.genai import types
 
 # --- Configuration ---
 
 AUDIO_GENERATION_TENACITY_ATTEMPTS = int(get_optional_env_var("AUDIO_GENERATION_TENACITY_ATTEMPTS", "3"))
 STATIC_AUDIO_FALLBACK = "static/audio/audio_track_1.mp3"
-AUDIO_TTS_GENERATION_MODEL = get_required_env_var("AUDIO_TTS_GENERATION_MODEL")
-AUDIO_TTS_VOICE_NAME = get_required_env_var("AUDIO_TTS_VOICE_NAME")
+AUDIO_TTS_GENERATION_MODEL = get_optional_env_var("AUDIO_TTS_GENERATION_MODEL", "")
+AUDIO_TTS_VOICE_NAME = get_optional_env_var("AUDIO_TTS_VOICE_NAME", "")
 AUDIO_LYRIA_GENERATION_MODEL = get_required_env_var("AUDIO_LYRIA_GENERATION_MODEL")
 AUDIO_GENERATION_TENACITY_ATTEMPTS = int(get_required_env_var("AUDIO_GENERATION_TENACITY_ATTEMPTS"))
 
@@ -185,9 +184,7 @@ async def _generate_audio(
             asset=generated_media,
             context=tool_context,
             save_in_gcs=True,
-            gcs_folder=utils_agents.get_or_create_unique_session_id(
-                tool_context
-            ),
+            gcs_folder=f"{ad_generation_constants.SESSIONS_PREFIX}/{utils_agents.get_or_create_unique_session_id(tool_context)}",
         )
         
         return {
@@ -202,96 +199,53 @@ async def _generate_audio(
 
 
 # @log_function_call
-# @retry(
-#     stop=stop_after_attempt(AUDIO_GENERATION_TENACITY_ATTEMPTS),
-#     wait=wait_random_exponential(multiplier=2, min=1, max=33),
-#     retry=retry_if_exception_type((api_exceptions.ResourceExhausted, api_exceptions.ServiceUnavailable, api_exceptions.InternalServerError))
-# )
-async def _generate_voiceover_content(
-    prompt: str, text: str, voice_name: str
-) -> bytes:
-    """Synthesizes speech using Gemini-TTS.
-
-    Args:
-        prompt (str): Styling instructions for the voice.
-        text (str): The text to be spoken.
-        voice_name (str): The name of the voice to use.
-
-    Returns:
-        The audio content as bytes, or None on failure.
-    """
-    try:
-        from google.api_core.client_options import ClientOptions
-        from adk_common.utils.constants import get_required_env_var
-        
-        project_id = get_required_env_var("GOOGLE_CLOUD_PROJECT")
-        
-        # Explicitly pass the quota project to prevent ADC 403 Service Disabled errors
-        client_options = ClientOptions(quota_project_id=project_id)
-        client = texttospeech.TextToSpeechAsyncClient(client_options=client_options)
-        
-        synthesis_input = texttospeech.SynthesisInput(text=text, prompt=prompt)
-
-        voice = texttospeech.VoiceSelectionParams(
-            language_code="en-US", model_name=AUDIO_TTS_GENERATION_MODEL, name=voice_name
-        )
-
-        log_message(f"VoiceSelectionParams: model_name='{AUDIO_TTS_GENERATION_MODEL}', name='{voice_name}'", Severity.INFO)
-
-        audio_config = texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.MP3
-        )
-        response = await client.synthesize_speech(
-            input=synthesis_input, voice=voice, audio_config=audio_config
-        )
-        return response.audio_content
-    except Exception as e:
-        log_message(
-            f"Failed to generate voiceover content: {e}. Type: {type(e)}", Severity.ERROR
-        )
-        raise e
-
-
-# @log_function_call
 async def _generate_voiceover(
     prompt: str,
     text: str,
     tool_context: ToolContext,
     voice_name: str,
-) -> dict[str, str | GeneratedMedia]:
-    """Generates a voiceover and saves it as an artifact.
-
-    Args:
-        prompt (str): Styling instructions for the voice.
-        text (str): The text to be spoken.
-        tool_context (ToolContext): The context for artifact management.
-        voice_name (str): The name of the voice to use.
-
-    Returns:
-        A dictionary with the generated voiceover artifact name.
-    """
+) -> dict[str, Any]:
+    """Generates a voiceover using Gemini's multimodal capabilities."""
     
-    # Fallback logic for voice selection
-    selected_voice = voice_name
-    if not selected_voice or selected_voice not in ALL_VOICES:
-        if selected_voice:
-             log_message(f"Voice '{selected_voice}' not found in ALL_VOICES. Defaulting to '{AUDIO_TTS_VOICE_NAME}'.", Severity.WARNING)
-        selected_voice = AUDIO_TTS_VOICE_NAME
-
-    audio_content = await _generate_voiceover_content(
-        prompt, text, selected_voice
-    )
+    log_message(f"Generating voiceover with Gemini. Text: {text}", Severity.INFO)
     
-    if not audio_content:
-        log_message("_generate_voiceover_content returned empty", severity=Severity.ERROR)
-        raise RuntimeError("Failed to generate voiceover content")
+    from ad_generation_agent.utils.image_generation import get_gemini_client
+    client = get_gemini_client()
 
+    # Combine styling prompt and the actual text
+    full_prompt = f"Styling instructions: {prompt}\n\nText to speak: {text}"
+    
     try:
+        response = await client.aio.models.generate_content(
+            model=AUDIO_TTS_GENERATION_MODEL,
+            contents=[full_prompt],
+            config=types.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+            )
+        )
+        
+        audio_content = None
+        if (
+            response
+            and response.candidates
+            and response.candidates[0]
+            and response.candidates[0].content
+            and response.candidates[0].content.parts
+        ):
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, "inline_data") and part.inline_data and part.inline_data.data:
+                    audio_content = part.inline_data.data
+                    break
+        
+        if not audio_content:
+            raise RuntimeError("Gemini API returned no audio content for voiceover.")
+
         # Microsecond Timestamp + Random Chars
         now = datetime.datetime.now()
         timestamp_str = now.strftime("%Y%m%d_%H%M%S_%f")
         random_chars = ''.join(random.choices(string.ascii_lowercase + string.digits, k=3))
         filename = f"voiceover_{timestamp_str}_{random_chars}.mp3"
+        
         generated_media: GeneratedMedia | None = GeneratedMedia(
             filename=filename,
             mime_type=ad_generation_constants.AUDIO_MIMETYPE,
@@ -302,17 +256,16 @@ async def _generate_voiceover(
             asset=generated_media,
             context=tool_context,
             save_in_gcs=True,
-            gcs_folder=utils_agents.get_or_create_unique_session_id(
-                tool_context
-            ),
+            gcs_folder=f"{ad_generation_constants.SESSIONS_PREFIX}/{utils_agents.get_or_create_unique_session_id(tool_context)}",
         )
         
         return {
             "audio_type": "generated_voiceover",
             "media": generated_media
         }
-    except IOError as e:
-        log_message(f"Error saving voiceover artifact: {e}", Severity.ERROR)
+
+    except Exception as e:
+        log_message(f"Failed to generate voiceover with Gemini: {e}", Severity.ERROR)
         raise e
 
 
@@ -326,7 +279,7 @@ async def generate_audio_and_voiceover(
     generation_mode: str = "both",
 ) -> Dict[str, Any]:
     """
-    Generates a background audio track, a voiceover, or both in a single function call.
+    Generates a background audio track, a voiceover (using Gemini), or both in a single function call.
     This function can run generation processes concurrently for improved performance when generating both.
 
     Args:
@@ -336,37 +289,7 @@ async def generate_audio_and_voiceover(
                                         IMPORTANT: You MUST calculate the total video duration (number of scenes * duration per scene) and ensure the `voiceover_text` fits as exactly as possible but is never longer than the video.
                                         *   Rule of thumb: ~1 words per second.
                                         *   Err on the side of shorter voiceovers to avoid abrupt ending or truncation.
-        voiceover_voice (str, optional): The specific voice to use for the voiceover. Choose the most appropriate voice from the following list based on the ad's tone and target audience:
-            *   **Achernar**: Female. Soft, clear mid-range voice with a friendly and engaging tone. Best for explainers, podcast intros, and content requiring a gentle touch.
-            *   **Achird**: Male. Youthful, inquisitive, and slightly breathy voice. Ideal for tutorials, educational content for younger audiences, or casual explainers.
-            *   **Algenib**: Male. Gravelly and textured. Use for dramatic storytelling, character voices in games, or content requiring a rugged, serious tone.
-            *   **Algieba**: Male. Smooth and polished. Suitable for general narration, corporate presentations, and content that needs a seamless, professional delivery.
-            *   **Alnilam**: Male. Firm and steady. Best for news broadcasting, official announcements, and delivering factual information with authority.
-            *   **Aoede**: Female. Breezy, clear, and conversational. Excellent for podcasts, e-learning, and 'elated' or congratulatory messages where a thoughtful yet lighthearted tone is needed.
-            *   **Autonoe**: Female. Bright, mature, and resonant with a deeper tone. Perfect for documentaries, audiobooks, and serious narration requiring a calm presence.
-            *   **Callirrhoe**: Female. Easy-going, confident, and articulate professional voice. The 'gold standard' for business narration, customer support agents, and casual yet polite conversation.
-            *   **Charon**: Male. Deep, authoritative, and informative. Best suited for news reading, serious broadcasts, documentaries, and content requiring gravity and trust.
-            *   **Despina**: Female. Warm, inviting, and trustworthy. Ideal for commercials, customer service interactions, and welcoming messages.
-            *   **Enceladus**: Male. Breathy and textured. Often used for specific character emotions (like sounding tired or bored) or atmospheric storytelling.
-            *   **Erinome**: Female. Professional, articulate, and clear. Best for education, museum guides, and formal instruction where clarity is paramount.
-            *   **Fenrir**: Male. Excitable, deep, and resonant. Great for passionate storytelling, poetry recitation, or high-energy narratives that need 'majestic' qualities.
-            *   **Gacrux**: Female. Mature, smooth, and authoritative yet approachable. Excellent for corporate videos, high-level instruction, and professional training materials.
-            *   **Iapetus**: Male. Clear and neutral. A versatile choice for general purpose text-to-speech where the content should take center stage over the voice personality.
-            *   **Kore**: Female. Firm, energetic, and professional with a slightly higher pitch. Best for upbeat advertisements, tutorials, and standard announcements.
-            *   **Laomedeia**: Female. Upbeat, inquisitive, and conversational. Great for explainers, FAQs, and content that aims to engage the listener actively.
-            *   **Leda**: Female. Youthful, clear, and composed. Suitable for professional narration, e-learning, and content targeting a modern audience.
-            *   **Orus**: Male. Firm and direct. Use for serious announcements, warnings, or instructional content that requires strict adherence.
-            *   **Puck**: Male. Upbeat, conversational, and friendly. Perfect for fun content, character voices, excited narration, or casual apps.
-            *   **Pulcherrima**: Female. Forward, bright, and energetic. Best for commercials, promotional videos, and character voices that need to cut through noise.
-            *   **Rasalgethi**: Male. Informative and neutral. Ideal for news briefings, weather reports, and factual data delivery.
-            *   **Sadachbia**: Male. Lively and dynamic. Use for advertisements, energetic promos, and content that needs to keep the listener moving.
-            *   **Sadaltager**: Male. Knowledgeable and steady. Best for educational videos, expert narration, and technical explainers.
-            *   **Schedar**: Male. Even and consistent. Suitable for long-form reading, lists, and content where a flat, non-distracting delivery is preferred.
-            *   **Sulafat**: Female. Warm, confident, and persuasive. Excellent for marketing narration, sales pitches, and content intended to convince or reassure.
-            *   **Umbriel**: Male. Easy-going and relaxed. Best for casual narration, lifestyle content, and blogs.
-            *   **Vindemiatrix**: Female. Gentle, calm, and thoughtful with a lower pitch. Perfect for meditation guides, wellness apps, and reflective content.
-            *   **Zephyr**: Female. Bright, perky, and energetic with a higher pitch. Ideal for children's content, high-energy commercials, and friendly notifications.
-            *   **Zubenelgenubi**: Male. Casual and informal. Use for social media content, vlogs, and scenarios requiring a 'friend-next-door' vibe.
+        voiceover_voice (str, optional): The specific voice to use for the voiceover (Note: Gemini TTS might use its own voice selection based on the prompt).
         generation_mode (str, optional): Specifies what to generate. Can be 'audio', 'voiceover', or 'both'.
                                          Defaults to 'both'.
         

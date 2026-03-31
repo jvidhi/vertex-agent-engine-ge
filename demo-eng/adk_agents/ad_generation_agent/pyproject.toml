@@ -2,7 +2,6 @@
 name = "ad_generation_agent"
 version = "4.20260310.1"
 description = "Product Catalog Ad Generation Agent"
-authors = [{ name = "Gonzalo Varela", email = "gvarelal@google.com" }]
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -16,7 +15,6 @@ dependencies = [
     "pandas==3.0.1",
     "toolbox-core==0.6.0",
     "moviepy==2.2.1",
-    "google-cloud-texttospeech==2.34.0",
     "soundfile==0.13.1",
     "aiohttp==3.13.3",
     "adk_common",

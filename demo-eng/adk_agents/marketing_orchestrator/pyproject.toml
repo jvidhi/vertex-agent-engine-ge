@@ -2,7 +2,6 @@
 name = "marketing_orchestrator"
 version = "3.20251118.1"
 description = "Marketing Orchestrator Agent"
-authors = [{ name = "Gonzalo Varela", email = "gvarelal@google.com" }]
 readme = "README.md"
 requires-python = ">=3.11"
 

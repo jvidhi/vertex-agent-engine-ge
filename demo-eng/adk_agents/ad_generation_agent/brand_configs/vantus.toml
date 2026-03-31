@@ -1,5 +1,5 @@
 brand_name = "Vantus"
-logo_image_url = "https://storage.cloud.google.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_logo.png"
+logo_image_url = "https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_logo.png"
 brand_guidelines = """
 # VANTUS | Brand Guideline Document (v1.0)
 
@@ -46,15 +46,15 @@ A list of Vantus's primary color palette:
 
 [[products]]
 product_name = "Catalyst Shoes"
-product_image_url = "https://storage.cloud.google.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_catalyst_profiles.png"
+product_image_url = "https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_catalyst_profiles.png"
 product_guidelines = "Focus on the shoes being worn by a person in motion, either running or walking."
 
 [[products]]
 product_name = "Vantus Sweater"
-product_image_url = "https://storage.cloud.google.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_sweater.png"
+product_image_url = "https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_sweater.png"
 product_guidelines = "Focus on the sweater's versatile performance, showing a comfortable transition from active movement to casual wear. Highlight the engineered durability of the fabric."
 
 [[products]]
 product_name = "Vantus Jeans"
-product_image_url = "https://storage.cloud.google.com/nrf-marketing-brand-configs/brand_configs/vantus/vantus_jeans.png"
+product_image_url = "https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_jeans.png"
 product_guidelines = "Emphasize rugged durability and flexibility. Showcase the jeans in an active, demanding environment like a job site or urban commute, focusing on freedom of movement."

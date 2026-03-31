@@ -115,7 +115,6 @@ SAFETY_SETTINGS = [
 
 def _log_env_vars():
     log_message(f"DEBUG_ENV: GOOGLE_CLOUD_PROJECT={os.environ.get('GOOGLE_CLOUD_PROJECT')}", Severity.DEBUG)
-    log_message(f"DEBUG_ENV: GOOGLE_CLOUD_LOCATION={os.environ.get('GOOGLE_CLOUD_LOCATION')}", Severity.DEBUG)
     log_message(f"DEBUG_ENV: MODELS_CLOUD_LOCATION={os.environ.get('MODELS_CLOUD_LOCATION')}", Severity.DEBUG)
     log_message(f"DEBUG_ENV: IMAGE_GENERATION_MODEL={os.environ.get('IMAGE_GENERATION_MODEL')}", Severity.DEBUG)
     log_message(f"DEBUG_ENV: GOOGLE_GENAI_USE_VERTEXAI={os.environ.get('GOOGLE_GENAI_USE_VERTEXAI')}", Severity.DEBUG)

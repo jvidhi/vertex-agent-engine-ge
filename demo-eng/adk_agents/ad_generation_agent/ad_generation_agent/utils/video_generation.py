@@ -206,7 +206,7 @@ async def generate_single_video(
             context=tool_context,
             save_in_gcs=True,
             save_in_artifacts=RENDER_VIDEOS_INLINE,
-            gcs_folder=utils_agents.get_or_create_unique_session_id(tool_context),
+            gcs_folder=f"{ad_generation_constants.SESSIONS_PREFIX}/{utils_agents.get_or_create_unique_session_id(tool_context)}",
         )
 
         return_object = {
@@ -380,7 +380,7 @@ async def generate_single_video_from_ingredients(
             context=tool_context,
             save_in_gcs=True,
             save_in_artifacts=RENDER_VIDEOS_INLINE,
-            gcs_folder=utils_agents.get_or_create_unique_session_id(tool_context),
+            gcs_folder=f"{ad_generation_constants.SESSIONS_PREFIX}/{utils_agents.get_or_create_unique_session_id(tool_context)}",
         )
 
         return_object = {

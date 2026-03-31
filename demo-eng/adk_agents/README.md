@@ -37,12 +37,11 @@ Each agent is a self-contained package. Explore their individual directories for
 
 | Agent | Description | Directory |
 | :--- | :--- | :--- |
-| **Marketing Orchestrator** | The "Boss" agent. Coordinates sub-agent delegation. | [marketing_orchestrator](file:///Users/gvarelal/Documents/demos/cde-github/demo-eng-dev/adk_agents/marketing_orchestrator) |
-| **NRF Marketing Analyst** | Simulates an expert analyst for campaign insights. | [nrf_marketing_analyst_agent](file:///Users/gvarelal/Documents/demos/cde-github/demo-eng-dev/adk_agents/nrf_marketing_analyst_agent) |
-| **Ad Generation Agent** | Specialized 'Asset-First' workflow for images/videos. | [ad_generation_agent](file:///Users/gvarelal/Documents/demos/cde-github/demo-eng-dev/adk_agents/ad_generation_agent) |
-| **GenMedia Agent** | Central media generation service (Vertex AI Image/Video). | [genmedia_agent](file:///Users/gvarelal/Documents/demos/cde-github/demo-eng-dev/adk_agents/genmedia_agent) |
-| **Retrieve Asset Agent** | Identifies and retrieves creative assets. | [retrieve_asset_agent](file:///Users/gvarelal/Documents/demos/cde-github/demo-eng-dev/adk_agents/retrieve_asset_agent) |
-| **Marketing Plan Agent** | Specialized in high-level campaign planning. | [marketing_plan_agent](file:///Users/gvarelal/Documents/demos/cde-github/demo-eng-dev/adk_agents/marketing_plan_agent) |
+| **Marketing Orchestrator** | The "Boss" agent. Coordinates sub-agent delegation. | [marketing_orchestrator]
+| **Ad Generation Agent** | Specialized 'Asset-First' workflow for images/videos. | [ad_generation_agent]
+| **GenMedia Agent** | Central media generation service (Vertex AI Image/Video). | [genmedia_agent]
+| **Retrieve Asset Agent** | Identifies and retrieves creative assets. | [retrieve_asset_agent]
+| **Marketing Plan Agent** | Specialized in high-level campaign planning. | [marketing_plan_agent]
 
 > [!TIP]
 > Each agent folder contains its own `README.md` with specific environment variables and configuration details.
