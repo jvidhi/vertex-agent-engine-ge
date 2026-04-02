@@ -1,0 +1,71 @@
+{
+  "eval_set_id": "ad_gen_reference_video_modality_routing",
+  "name": "Reference Video Modality Mapping Rules",
+  "description": "Validates that the orchestrator LLM correctly maps complex scenes lacking a primary human character to the 'reference_images' generation modality instead of 'first_frame', avoiding hallucination bugs in Veo 3.1.",
+  "eval_cases": [
+    {
+      "eval_id": "b_roll_modality_mapping",
+      "conversation": [
+        {
+          "invocation_id": "modality_setup",
+          "user_content": {
+            "parts": [
+              {
+                "text": "I am working on a new campaign for Vantus. We are promoting the Catalyst Shoes."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "I have loaded the Vantus brand. How can I help you today?"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "args": {
+                  "company_name": "Vantus",
+                  "product_name": "Catalyst Shoes"
+                },
+                "name": "retrieve_brand_identity"
+              }
+            ],
+            "intermediate_responses": []
+          }
+        },
+        {
+          "invocation_id": "modality_inv_1",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Generate a video scene that is just a drone shot flying over a beautiful mountain range to establish the setting. No characters. Operate autonomously and generate the storyboard batch directly without asking for intermediate image approval. Stop immediately after generating the video batch. Do NOT generate audio, do NOT combine the video, and do NOT evaluate it."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Hello! I am your Personalized Ad Generation Assistant. I'll generate the initial B-roll shot for your approval!"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "content_generation_agent",
+        "user_id": "test_user_strict",
+        "state": {}
+      }
+    }
+  ]
+}

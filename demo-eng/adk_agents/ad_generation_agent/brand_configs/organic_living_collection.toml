@@ -1,0 +1,14 @@
+brand_name = "Organic Living Collection"
+logo_image_url = "gs://jvidhi-agents/Organic_Living_Collection/organic_living_logo.png"
+main_character_url = "gs://jvidhi-agents/Organic_Living_Collection/organic_living_character.png"
+brand_guidelines = """
+Brand Voice: Natural, warm, and authentic.
+Visual Identity: Soft earth tones, natural lighting, organic textures.
+Core Values: Sustainability, wellness, and purity.
+Color Palette: Sage green, cream, and warm wood accents.
+Typography: Clean serif for elegance and readability.
+"""
+
+[[products]]
+product_name = "Organic Face Cream"
+product_guidelines = "Minimalist packaging in a natural, sunlit bathroom setting."

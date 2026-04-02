@@ -1,0 +1,92 @@
+{
+  "eval_set_id": "ad_gen_storyboard_hierarchy",
+  "name": "Storyboard Tool Sequence Enforcement",
+  "description": "Validates that the agent rigidly enforces the step-by-step logic hierarchy, specifically ensuring it generates the anchor Asset Sheet BEFORE it ever attempts to execute Video Storyboard Generation.",
+  "eval_cases": [
+    {
+      "eval_id": "standard_video_generation_flow",
+      "conversation": [
+        {
+          "invocation_id": "hierarchy_inv_setup",
+          "user_content": {
+            "parts": [
+              {
+                "text": "I am working on a new campaign for Vantus. We are promoting the Catalyst Shoes shoes."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "I have loaded the Vantus brand. How can I help you today?"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "args": {
+                  "company_name": "Vantus",
+                  "product_name": "Catalyst Shoes"
+                },
+                "name": "retrieve_brand_identity"
+              }
+            ],
+            "intermediate_responses": []
+          }
+        },
+        {
+          "invocation_id": "hierarchy_inv_1",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Make a full video commercial. The brand identity is perfect, just execute all the steps from script to final combination. Standard 16:9 ratio."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Hello! I am your Personalized Ad Generation Assistant. Are you ready to begin?"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "args": {
+                  "company_name": "Vantus"
+                },
+                "name": "generate_asset_sheet"
+              }
+            ],
+            "intermediate_responses": []
+          }
+        },
+        {
+          "user_content": {
+            "parts": [
+              {
+                "text": "Take the previous storyline script and generate the visual storyboard flow for Cymbal. Here is the product URL: https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_logo.png. Here is the character profile URL: https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_logo.png. Here is the logo URL: https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_logo.png. Run autonomously directly without asking for intermediate script or image approval."
+              }
+            ],
+            "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "content_generation_agent",
+        "user_id": "test_user_strict",
+        "state": {}
+      }
+    }
+  ]
+}

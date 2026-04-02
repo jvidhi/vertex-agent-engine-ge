@@ -1,0 +1,76 @@
+{
+  "eval_set_id": "ad_gen_asset_gap_fill_batch",
+  "name": "Batch Missing Asset Generation",
+  "description": "Verifies that when a brand lacks multiple core assets and the user explicitly grants permission to generate all placeholders, the agent efficiently calls GENERATE_AD_HOC_IMAGE_BATCH_TOOL with a single JSON array rather than executing redundant individual tool calls.",
+  "eval_cases": [
+    {
+      "eval_id": "batch_generate_all_missing",
+      "conversation": [
+        {
+          "invocation_id": "batch_setup",
+          "user_content": {
+            "parts": [
+              {
+                "text": "My company is Cymbal Bank. We are promoting the Cymbal Card."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "I have looked up Cymbal Bank. It seems we are missing the core assets."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "args": {
+                  "company_name": "Cymbal Bank",
+                  "product_name": "Cymbal Card"
+                },
+                "name": "retrieve_brand_identity"
+              }
+            ],
+            "intermediate_responses": []
+          }
+        },
+        {
+          "invocation_id": "batch_inv_1",
+          "user_content": {
+            "parts": [
+              {
+                "text": "We are lacking all core creative assets for the upcoming launch. Generate placeholders."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "I have successfully generated the missing brand logo, product image, and character for the campaign."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "args": {},
+                "name": "generate_ad_hoc_image_batch"
+              }
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "content_generation_agent",
+        "user_id": "test_user_strict",
+        "state": {}
+      }
+    }
+  ]
+}

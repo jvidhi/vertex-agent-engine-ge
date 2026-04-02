@@ -1,0 +1,90 @@
+{
+  "eval_set_id": "ad_gen_reuse_logic",
+  "name": "Multi-Turn First-Frame Image Reuse",
+  "description": "Validates that the agent reuses a user-provided character image for a first-frame video scene instead of redundantly generating a new one in a multi-turn conversation.",
+  "eval_cases": [
+    {
+      "eval_id": "multi_turn_reuse",
+      "conversation": [
+        {
+          "invocation_id": "turn_1_pasted_image",
+          "user_content": {
+            "parts": [
+              {
+                "text": "I want to use this image as the main character for our upcoming campaign: https://storage.googleapis.com/jvidhi-agents/brand_configs/vantus/vantus_sweater.png"
+              }
+            ],
+            "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": []
+          }
+        },
+        {
+          "invocation_id": "turn_2_onboarding",
+          "user_content": {
+            "parts": [
+              {
+                "text": "The brand is Vantus. We are promoting the Catalyst Shoes jacket. Please retrieve the brand identity and help me brainstorm a 15-second video ad."
+              }
+            ],
+            "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "args": {
+                  "company_name": "Vantus",
+                  "product_name": "Catalyst Shoes"
+                },
+                "name": "retrieve_brand_identity"
+              }
+            ]
+          }
+        },
+        {
+          "invocation_id": "turn_3_filler",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Tell me more about the brand's 'Catalyst Shoes' collection mentioned in the config."
+              }
+            ],
+            "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": []
+          }
+        },
+        {
+          "invocation_id": "turn_4_generation",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Great. Now generate a 15-second video ad featuring the character I sent in the first turn. Use 'first_frame' modality for the character scenes. Do all steps autonomously. Stop immediately after generating the video storyboard batch. Do NOT generate audio, do NOT combine the video, and do NOT evaluate it."
+              }
+            ],
+            "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "generate_video_storyboard_batch"
+              }
+            ],
+            "forbidden_tool_uses": [
+              "generate_storyboard_image_batch",
+              "generate_scene_frame",
+              "generate_ad_hoc_image"
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "content_generation_agent",
+        "user_id": "test_user_reuse",
+        "state": {}
+      }
+    }
+  ]
+}

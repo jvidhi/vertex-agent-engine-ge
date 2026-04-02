@@ -1,0 +1,75 @@
+{
+  "eval_set_id": "ad_gen_display_ad_routing",
+  "name": "Display Ad Routing Validation",
+  "description": "Verifies that when a user explicitly asks for a static banner/display ad, the agent bypasses the video storyboard logic entirely and routes directly to the GENERATE_DISPLAY_AD_TOOL.",
+  "eval_cases": [
+    {
+      "eval_id": "display_ad_explicit",
+      "conversation": [
+        {
+          "invocation_id": "display_ad_setup",
+          "user_content": {
+            "parts": [
+              {
+                "text": "My company is Vantus."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "I have loaded the Vantus brand. How can I help you today?"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "args": {
+                  "company_name": "Vantus"
+                },
+                "name": "retrieve_brand_identity"
+              }
+            ],
+            "intermediate_responses": []
+          }
+        },
+        {
+          "invocation_id": "display_ad_inv_1",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Generate a static display image ad for the summer promo. Here is the product URL: https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_logo.png. Here is the character profile URL: https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_logo.png"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Hello! I am your Personalized Ad Generation Assistant. Are you ready to begin?"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "args": {},
+                "name": "generate_display_ad"
+              }
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "content_generation_agent",
+        "user_id": "test_user_strict",
+        "state": {}
+      }
+    }
+  ]
+}

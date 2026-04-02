@@ -1,0 +1,41 @@
+{
+  "eval_set_id": "ad_gen_adhoc_references",
+  "name": "Ad-Hoc Image Generation with References",
+  "description": "Validates that the orchestrator successfully extracts user-provided reference image URLs and passes them correctly into the GENERATE_AD_HOC_IMAGE_BATCH_TOOL.",
+  "eval_cases": [
+    {
+      "eval_id": "adhoc_with_reference",
+      "conversation": [
+        {
+          "invocation_id": "adhoc_ref_inv_1",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Generate a new ad-hoc image. You MUST use the exact prompt string `A futuristic car`. Here is a reference image: https://storage.googleapis.com/jvidhi-agents/brand_configs/vantus/vantus_jeans.png and another: https://storage.googleapis.com/jvidhi-agents/brand_configs/vantus/vantus_sweater.png. The brand is Catalyst Shoes. Use the default product and character URLs: https://storage.googleapis.com/jvidhi-agents/brand_configs/vantus/vantus_jeans.png and https://storage.googleapis.com/jvidhi-agents/brand_configs/vantus/vantus_sweater.png. Do not ask for confirmation, just run it."
+              }
+            ],
+            "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "generate_ad_hoc_image",
+                "args": {
+                  "prompt": "A futuristic car",
+                  "product_name": "Catalyst Shoes",
+                  "product_image_url": "https://storage.googleapis.com/jvidhi-agents/brand_configs/vantus/vantus_jeans.png",
+                  "reference_images": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "content_generation_agent",
+        "user_id": "test_user_strict",
+        "state": {}
+      }
+    }
+  ]
+}

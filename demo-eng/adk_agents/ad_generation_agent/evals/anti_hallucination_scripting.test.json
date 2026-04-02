@@ -1,0 +1,44 @@
+{
+  "eval_set_id": "ad_gen_anti_hallucination_scripting",
+  "name": "Storyline Script Formatting & Anti-Hallucination Verification",
+  "description": "Verifies that the orchestrator actually obeys Step 2 (Storyline Development) by explicitly generating the mandatory script headers (Purpose, Alignment, Global Persistent Visuals) BEFORE it attempts to generate any images or video, serving to prevent cross-scene drift hallucination.",
+  "eval_cases": [
+    {
+      "eval_id": "strict_script_formatting",
+      "conversation": [
+        {
+          "invocation_id": "script_inv_1",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Start generating the video ad for N26. I've approved the missing assets. Move on to the script."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Here is the detailed storyline script for your approval:\n\n### Purpose/Objective\n...\n### Alignment with Guidelines and Constraints\n...\n### Global Persistent Visuals\n...\n\nDoes this script align with your vision? Shall I proceed to generating the visual storyboard images?"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "content_generation_agent",
+        "user_id": "test_user_strict",
+        "state": {
+          "logo_image_url": "gs://fake/logo.png",
+          "product_image_url": "gs://fake/product.png",
+          "main_character_url": "gs://fake/character.png"
+        }
+      }
+    }
+  ]
+}

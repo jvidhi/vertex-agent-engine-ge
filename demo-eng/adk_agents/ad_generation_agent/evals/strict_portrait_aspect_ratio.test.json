@@ -1,0 +1,71 @@
+{
+  "eval_set_id": "ad_gen_strict_portrait_aspect_ratio",
+  "name": "Strict Portrait Aspect Ratio Defaults",
+  "description": "Verifies that if a user does not explicitly override the dimensional constraints, the agent correctly omits 'aspect_ratio' from the tool calls, forcing the system default (9:16 portrait) to be respected without hallucinating landscape dimensions.",
+  "eval_cases": [
+    {
+      "eval_id": "default_aspect_ratio_enforcement",
+      "conversation": [
+        {
+          "invocation_id": "ratio_setup",
+          "user_content": {
+            "parts": [
+              {
+                "text": "I am working on a new campaign for Vantus. We are promoting the Catalyst Shoes shoes."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "I have loaded the Vantus brand. How can I help you today?"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "args": {
+                  "company_name": "Vantus",
+                  "product_name": "Catalyst Shoes"
+                },
+                "name": "retrieve_brand_identity"
+              }
+            ],
+            "intermediate_responses": []
+          }
+        },
+        {
+          "invocation_id": "ratio_inv_1",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Generate a raw video ad with a gritty urban background. Use 9:16 aspect ratio. Here is the product URL: https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_logo.png. Here is the character profile URL: https://storage.cloud.google.com/jvidhi-agents/brand_configs/vantus/vantus_logo.png. Run autonomously and generate the video directly without asking for intermediate script or image approval. Stop immediately after generating the video batch. Do NOT generate audio, do NOT combine the video, and do NOT evaluate it."
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Hello! I am your Personalized Ad Generation Assistant. I will generate that gritty video ad for your approval!"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "content_generation_agent",
+        "user_id": "test_user_strict",
+        "state": {}
+      }
+    }
+  ]
+}
