@@ -84,9 +84,10 @@ You can use the standalone script to generate high-quality reference images and 
 **Example 1: Initialize Brand Assets (Logo & Character)**
 This will use Gemini to generate brand-aligned prompts based on your `.toml` config and create a sample logo and character.
 ```bash
-uv run python create_reference_images.py --init
+uv run python create_reference_images.py --init --all
 ```
 
+**OPTIONAL**
 **Example 2: Generate a specific product reference**
 ```bash
 uv run python create_reference_images.py \
@@ -94,7 +95,8 @@ uv run python create_reference_images.py \
     --filename "organic_cream_luxury"
 ```
 
-**Example 2: Generate a lifestyle reference with specific aspect ratio**
+**OPTIONAL**
+**Example 3: Generate a lifestyle reference with specific aspect ratio**
 ```bash
 uv run python create_reference_images.py \
     --prompt "A woman using a high-end smartphone in a modern, sunlit cafe, cinematic lighting, 8k resolution" \
@@ -140,14 +142,14 @@ All variables are required either in `.env` (local) or the deployment JSON.
 ### Models (LLM)
 | Variable | Description | Default |
 | :--- | :--- | :--- |
-| `LLM_GEMINI_MODEL_ADGEN_ROOT` | Orchestrator model. | `gemini-3-pro-preview` |
-| `LLM_GEMINI_MODEL_ADGEN_SUBCALLS` | Sub-task/Storytelling model. | `gemini-3-pro-preview` |
-| `LLM_GEMINI_MODEL_EVALUATION` | Media evaluation model. | `gemini-3-pro-preview` |
+| `LLM_GEMINI_MODEL_ADGEN_ROOT` | Orchestrator model. | `gemini-2.0-flash-thinking-exp` |
+| `LLM_GEMINI_MODEL_ADGEN_SUBCALLS` | Sub-task/Storytelling model. | `gemini-3-flash-preview` |
+| `LLM_GEMINI_MODEL_EVALUATION` | Media evaluation model. | `gemini-3-flash-preview` |
 
 ### Models (Media Generation)
 | Variable | Description | Default |
 | :--- | :--- | :--- |
-| `IMAGE_GENERATION_MODEL` | Imagen model version. | `imagen-3.0-generate-001` |
+| `IMAGE_GENERATION_MODEL` | Imagen model version. | `gemini-3.1-flash-image-preview` |
 | `VIDEO_GENERATION_MODEL` | Veo model version. | `veo-3.1-generate-preview` |
 | `AUDIO_TTS_GENERATION_MODEL` | Text-to-Speech model. | `gemini-2.5-pro-tts` |
 | `AUDIO_LYRIA_GENERATION_MODEL` | Music/SFX model. | `lyria-002` |

@@ -229,6 +229,8 @@ async def generate_ad_hoc_image(
         save_state_property(tool_context, ad_generation_constants.STATE_KEY_MAIN_CHARACTER_URL, main_character_url)
         save_state_property(tool_context, ad_generation_constants.STATE_KEY_ASSET_SHEET_URL, asset_sheet_url)
         
+        utils_agents.geminienterprise_print(tool_context, "🎨 Generating custom image...")
+        
         all_refs = list(reference_images)
 
         final_aspect_ratio = aspect_ratio or IMAGE_DEFAULT_ASPECT_RATIO
@@ -276,6 +278,8 @@ async def generate_ad_hoc_image(
     except Exception as e:
         error_msg = f"Error in generate_ad_hoc_image: {str(e)}"
         log_message(error_msg, Severity.ERROR)
+        utils_agents.geminienterprise_print(tool_context, f"❌ {error_msg}")
+        save_state_property(tool_context, ad_generation_constants.STATE_KEY_LAST_ERROR, error_msg)
         return {
             "status": "failed", 
             "detail": error_msg,

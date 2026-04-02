@@ -109,6 +109,7 @@ async def _dynamic_instruction_provider(
             "LOGO_IMAGE_URL": context.state.get(ad_generation_constants.STATE_KEY_LOGO_IMAGE_URL, ""),
             "MAIN_CHARACTER_URL": context.state.get(ad_generation_constants.STATE_KEY_MAIN_CHARACTER_URL, ""),
             "ASSET_SHEET_URL": context.state.get(ad_generation_constants.STATE_KEY_ASSET_SHEET_URL, ""),
+            "LAST_ERROR": context.state.get(ad_generation_constants.STATE_KEY_LAST_ERROR, ""),
             "BRAND_CONTEXT_PAYLOAD": json.dumps(context.state.get(ad_generation_constants.STATE_KEY_BRAND_CONTEXT_PAYLOAD, {})),
             "GENERATE_ASSET_SHEET_TOOL": generate_asset_sheet.__name__,
             "COMBINE_TOOL": combine.__name__,

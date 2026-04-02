@@ -184,15 +184,24 @@ async def generate_and_select_best_image(
         try:
             # We enforce the semaphore to prevent rate limits before yielding to adk_common
             async with image_semaphore:
-                extracted = await generate_image_bytes(
-                    client=get_gemini_client(),
-                    model=get_image_generation_model(),
-                    contents=contents,
-                    max_retries=get_image_generation_tenacity_attempts(),
-                    retry_delay_min=1.0,
-                    retry_delay_max=max(1.0, get_image_generation_retry_delay_seconds()),
-                    aspect_ratio=aspect_ratio,
-                )
+                while True:
+                    try:
+                        extracted = await generate_image_bytes(
+                            client=get_gemini_client(),
+                            model=get_image_generation_model(),
+                            contents=contents,
+                            max_retries=get_image_generation_tenacity_attempts(),
+                            retry_delay_min=1.0,
+                            retry_delay_max=max(1.0, get_image_generation_retry_delay_seconds()),
+                            aspect_ratio=aspect_ratio,
+                        )
+                        break
+                    except api_exceptions.ResourceExhausted as e:
+                        msg = "The model is facing extremely high traffic. Waiting 10 seconds before trying again..."
+                        log_message(msg, Severity.WARNING)
+                        if tool_context:
+                            utils_agents.geminienterprise_print(tool_context, f"⚠️ {msg}")
+                        await asyncio.sleep(10)
             if extracted:
                 result_bytes = extracted[0][0]
                 

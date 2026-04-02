@@ -174,7 +174,10 @@ def retrieve_brand_identity(company_name: str, tool_context: ToolContext, produc
             ).convert_to_agent_response()
 
     except Exception as e:
-        log_message(f"Error executing retrieve_brand_identity: {e}", Severity.ERROR)
+        error_msg = f"Error executing retrieve_brand_identity: {e}"
+        log_message(error_msg, Severity.ERROR)
+        from adk_common.utils.utils_state import save_state_property
+        save_state_property(tool_context, ad_generation_constants.STATE_KEY_LAST_ERROR, error_msg)
         traceback.print_exc()
         return AgentToolResponse(
             status=Status.ERROR,

@@ -311,6 +311,8 @@ async def generate_display_ad(
     except Exception as e:
         error_msg = f"Error in generate_display_ad: {str(e)}"
         log_message(error_msg, Severity.ERROR)
+        utils_agents.geminienterprise_print(tool_context, f"❌ {error_msg}")
+        save_state_property(tool_context, ad_generation_constants.STATE_KEY_LAST_ERROR, error_msg)
         return {
             "status": "failed", 
             "detail": error_msg,

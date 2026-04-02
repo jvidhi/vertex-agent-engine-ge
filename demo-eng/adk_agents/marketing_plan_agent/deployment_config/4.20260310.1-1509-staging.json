@@ -1,8 +1,8 @@
 {
-  "agent": "ad_generation_agent",
-  "agent_module": "ad_generation_agent.agent",
+  "agent": "marketing_plan_agent",
+  "agent_module": "marketing_plan_agent.agent",
   "agent_variable": "root_agent",
-  "whl_file_path": "ad_generation_agent/dist/ad_generation_agent-4.20260310.1-py3-none-any.whl",
+  "whl_file_path": "marketing_plan_agent/dist/marketing_plan_agent-4.20260310.1-py3-none-any.whl",
   "deployment_environment": "prod",
   "gcs_bucket_deployment_location": "us-central1",
   "agent_description": "A Video ad generation agent.",

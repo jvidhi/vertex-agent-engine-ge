@@ -221,6 +221,7 @@ async def _generate_voiceover(
             contents=[full_prompt],
             config=types.GenerateContentConfig(
                 response_modalities=["AUDIO"],
+                thinking_config=types.ThinkingConfig(include_thoughts=True, thinking_budget=32000) if "thinking" in AUDIO_TTS_GENERATION_MODEL.lower() else None
             )
         )
         
@@ -313,7 +314,7 @@ async def generate_audio_and_voiceover(
                 )
             )
             
-        utils_agents.geminienterprise_print(tool_context, "Generating audio and voiceover...")
+        utils_agents.geminienterprise_print(tool_context, "Generating audio and voiceover... This may take 1-2 minutes.")
 
         if not tasks:
             log_message(f"Invalid generation_mode: {generation_mode}", Severity.ERROR)
@@ -339,6 +340,8 @@ async def generate_audio_and_voiceover(
     except Exception as e:
         error_msg = f"Error in generate_audio_and_voiceover: {str(e)}"
         log_message(error_msg, Severity.ERROR)
+        utils_agents.geminienterprise_print(tool_context, f"❌ {error_msg}")
+        save_state_property(tool_context, ad_generation_constants.STATE_KEY_LAST_ERROR, error_msg)
         return {
             "failures": [error_msg],
             "system_instruction": "Audio/Voiceover generation failed. Do NOT crash. Tell the user what happened."

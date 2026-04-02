@@ -20,6 +20,9 @@ from adk_common.utils import utils_agents
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types
 
+from ad_generation_agent.utils import ad_generation_constants
+from adk_common.utils.utils_state import save_state_property
+
 @log_function_call
 async def evaluate_ad(
     media_url: str,
@@ -42,6 +45,7 @@ async def evaluate_ad(
     """
     
     log_message(f"Starting ad evaluation for {media_url}", Severity.INFO)
+    utils_agents.geminienterprise_print(tool_context, f"🔍 Evaluating media: {media_url}...")
     
     try:
         # Load the media to be evaluated
@@ -106,5 +110,8 @@ async def evaluate_ad(
         return "\n".join(output_lines)
 
     except Exception as e:
-        log_message(f"Error in evaluate_ad: {e}", Severity.ERROR)
+        error_msg = f"Error in evaluate_ad: {str(e)}"
+        log_message(error_msg, Severity.ERROR)
+        utils_agents.geminienterprise_print(tool_context, f"❌ {error_msg}")
+        save_state_property(tool_context, ad_generation_constants.STATE_KEY_LAST_ERROR, error_msg)
         return f"Error occurred during evaluation: {str(e)}"

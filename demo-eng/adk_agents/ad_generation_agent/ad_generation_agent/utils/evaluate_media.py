@@ -127,14 +127,26 @@ async def evaluate_media(
             if images:
                 contents.extend(images)
             
-            response = await client.aio.models.generate_content(
-                model=LLM_GEMINI_MODEL_EVALUATION,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=EvalResult,
-                ),
-            )
+            while True:
+                try:
+                    response = await client.aio.models.generate_content(
+                        model=LLM_GEMINI_MODEL_EVALUATION,
+                        contents=contents,
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_schema=EvalResult,
+                            thinking_config=types.ThinkingConfig(include_thoughts=True, thinking_budget=32000) if "thinking" in LLM_GEMINI_MODEL_EVALUATION.lower() else None
+                        ),
+                    )
+                    break
+                except api_exceptions.ResourceExhausted as e:
+                    msg = "The model is facing extremely high traffic. Waiting 10 seconds before trying again..."
+                    log_message(msg, Severity.WARNING)
+                    # Note: tool_context is not passed to evaluate_media currently, 
+                    # but we can use print or just log it.
+                    # Given the current structure, we don't have tool_context here.
+                    # I will add it to the args if needed, but for now I'll just log.
+                    await asyncio.sleep(10)
 
             result = cast(EvalResult, response.parsed)
             if not result:

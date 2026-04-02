@@ -14,8 +14,10 @@
 
 """marketing_create_agent: for creating marketing strategies"""
 
+import os
 from typing import Optional
 
+import vertexai
 from adk_common.utils import utils_agents, utils_gcs, utils_prompts
 from adk_common.utils.constants import (get_optional_env_var,
                                                get_required_env_var)
@@ -29,6 +31,13 @@ from google.adk.utils import instructions_utils
 
 LLM_GEMINI_MODEL_MARKETINGPLAN = get_required_env_var("LLM_GEMINI_MODEL_MARKETINGPLAN")
 AGENT_VERSION = get_required_env_var("AGENT_VERSION")
+GOOGLE_CLOUD_PROJECT = get_required_env_var("GOOGLE_CLOUD_PROJECT")
+MODELS_CLOUD_LOCATION = get_required_env_var("MODELS_CLOUD_LOCATION")
+
+# Initialize Vertex AI with the project and location for models
+vertexai.init(project=GOOGLE_CLOUD_PROJECT, location=MODELS_CLOUD_LOCATION)
+# Override GOOGLE_CLOUD_LOCATION so that google.genai and ADK use the correct location for the model
+os.environ["GOOGLE_CLOUD_LOCATION"] = MODELS_CLOUD_LOCATION
 
 MARKETING_PLAN_AGENT_OUTPUT_KEY = "MARKETING_PLAN_AGENT_OUTPUT"
 LOGGING_PREFIX = f"[##MARKETING_AGENT_MARKETINGPLAN_{AGENT_VERSION}]"

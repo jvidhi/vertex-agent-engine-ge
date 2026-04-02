@@ -338,6 +338,8 @@ async def combine(
     except Exception as e:
         error_msg = f"Error in combine: {str(e)}"
         log_message(f"[combine_response] {error_msg}", Severity.ERROR)
+        utils_agents.geminienterprise_print(tool_context, f"❌ {error_msg}")
+        save_state_property(tool_context, ad_generation_constants.STATE_KEY_LAST_ERROR, error_msg)
         return {
             "error": error_msg,
             "system_instruction": "Combining videos failed. Gracefully notify the user."

@@ -24,6 +24,7 @@ from adk_common.utils.constants import get_required_env_var
 from adk_common.utils.utils_logging import Severity, log_function_call, log_message
 
 from google.genai.types import GenerateContentConfig
+from google.genai import types
 from ad_generation_agent.utils.image_generation import get_gemini_client
 
 from ad_generation_agent.utils.video_generation import (
@@ -77,9 +78,13 @@ async def _enhance_prompt_with_llm(
         vertex_client = get_gemini_client()
         response = await vertex_client.aio.models.generate_content(
             model=LLM_GEMINI_MODEL_ADGEN_SUBCALLS,
-            contents=system_instruction,
-            config=GenerateContentConfig(temperature=0.7),
+            contents=[prompt],
+            config=GenerateContentConfig(
+                temperature=0.7,
+                thinking_config=types.ThinkingConfig(include_thoughts=True, thinking_budget=32000) if "thinking" in LLM_GEMINI_MODEL_ADGEN_SUBCALLS.lower() else None
+            ),
         )
+
         
         if response.text:
             log_message(f"Enhanced Prompt: {response.text}", Severity.INFO)
@@ -436,7 +441,7 @@ async def generate_video_storyboard_batch(
         log_message(error_msg, Severity.ERROR)
         return error_msg
 
-    utils_agents.geminienterprise_print(tool_context, f"🚀 Firing off {len(scenes)} concurrent Vertex AI jobs across mixed modalities...")
+    utils_agents.geminienterprise_print(tool_context, f"🚀 Firing off {len(scenes)} concurrent Vertex AI jobs across mixed modalities... This may take 3-10 minutes.")
     
     tasks = []
     

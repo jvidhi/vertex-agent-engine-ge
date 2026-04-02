@@ -1,0 +1,46 @@
+brand_name = "Cymbal"
+logo_image_url = "https://storage.cloud.google.com/jvidhi-agents/brand_configs/cymbal/cymbal_logo.png"
+main_character_url = "https://storage.cloud.google.com/jvidhi-agents/brand_configs/cymbal/cymbal_character.png"
+asset_sheet_url = "https://storage.cloud.google.com/jvidhi-agents/brand_configs/cymbal/cymbal_asset_sheet.png"
+brand_guidelines = """
+# Cymbal | Brand Guideline Document (v1.0)
+
+## 1. Brand Overview
+Cymbal is a premium retail brand specializing in handcrafted, sustainably sourced leather goods. We bridge the gap between traditional craftsmanship and modern urban lifestyle.
+
+## 2. Brand Voice
+*   **Sophisticated yet Grounded:** We value quality and longevity over fast fashion.
+*   **Confident:** We speak with the authority of master craftsmen but remain approachable to the modern city dweller.
+*   **Artisanal:** We emphasize the 'human touch' and the unique story behind every piece of leather.
+
+## 3. Visual Identity
+*   **Aesthetic:** Warm, rich textures, earth tones, and soft, dramatic lighting.
+*   **Photography Style:** High-end lifestyle photography. Think sun-drenched workshops or golden hour in a bustling city.
+*   **Focus:** Close-up shots of stitching, grain, and patina to showcase quality.
+
+## 4. Color Palette
+*   **Oxblood Red:** #4A0E0E
+*   **Desert Sand:** #C2B280
+*   **Deep Espresso:** #3D2B1F
+*   **Burnished Gold:** #A67C00 (for accents)
+"""
+
+[[products]]
+product_name = "The Artisan Leather Jacket"
+product_image_url = "https://storage.cloud.google.com/jvidhi-agents/brand_configs/cymbal/artisan_jacket.png"
+product_guidelines = "Show the jacket in a workshop setting with soft side-lighting to emphasize the grain of the leather. The model should look thoughtful and creative."
+
+[[products]]
+product_name = "Urban Nomad Backpack"
+product_image_url = "https://storage.cloud.google.com/jvidhi-agents/brand_configs/cymbal/nomad_backpack.png"
+product_guidelines = "A wide shot of the backpack in a modern urban environment (e.g., a subway station or a rooftop garden). Emphasize functionality and durability."
+
+[[products]]
+product_name = "Midnight Chelsea Boots"
+product_image_url = "https://storage.cloud.google.com/jvidhi-agents/brand_configs/cymbal/chelsea_boots.png"
+product_guidelines = "A focus shot on the boots being worn on a rainy city street at night, with neon lights reflecting in the puddles."
+
+[[products]]
+product_name = "Classic Heritage Belt"
+product_image_url = "https://storage.cloud.google.com/jvidhi-agents/brand_configs/cymbal/heritage_belt.png"
+product_guidelines = "A clean, minimalist studio shot of the belt coiled on a wooden surface, highlighting the brass buckle."

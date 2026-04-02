@@ -272,6 +272,8 @@ async def generate_scene_frame(
         save_state_property(tool_context, ad_generation_constants.STATE_KEY_MAIN_CHARACTER_URL, main_character_url)
         save_state_property(tool_context, ad_generation_constants.STATE_KEY_ASSET_SHEET_URL, asset_sheet_url)
         
+        utils_agents.geminienterprise_print(tool_context, f"🎨 Generating image for scene {scene_number}...")
+        
         all_refs = list(reference_images)
 
 
@@ -335,6 +337,8 @@ async def generate_scene_frame(
     except Exception as e:
         error_msg = f"Error in generate_scene_frame: {str(e)}"
         log_message(error_msg, Severity.ERROR)
+        utils_agents.geminienterprise_print(tool_context, f"❌ {error_msg}")
+        save_state_property(tool_context, ad_generation_constants.STATE_KEY_LAST_ERROR, error_msg)
         return {
             "status": "failed", 
             "detail": error_msg,

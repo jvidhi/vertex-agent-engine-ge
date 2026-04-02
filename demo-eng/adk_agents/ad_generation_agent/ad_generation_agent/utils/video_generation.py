@@ -13,6 +13,7 @@ from adk_common.dtos.generated_media import GeneratedMedia
 from adk_common.utils import utils_agents
 from adk_common.utils.constants import get_required_env_var
 from adk_common.utils.utils_logging import Severity, log_message
+from adk_common.utils.utils_state import save_state_property
 from google import genai
 from google.api_core import exceptions as api_exceptions
 from adk_common.dtos.errors import ShowableException
@@ -102,7 +103,7 @@ async def generate_single_video(
 
             utils_agents.geminienterprise_print(
                 tool_context,
-                f"Generating video clip for {video_input.image_identifier} (Attempt {attempt_idx+1})...",
+                f"Generating video clip for {video_input.image_identifier} (Attempt {attempt_idx+1})... This may take 1-3 minutes.",
             )
             
             error = None
@@ -111,23 +112,34 @@ async def generate_single_video(
             try:
                 # We enforce the semaphore here before yielding to adk_common
                 async with video_semaphore:
-                    extracted = await generate_video_bytes(
-                        client=vertex_client,
-                        model=VIDEO_GENERATION_MODEL,
-                        prompt=current_prompt,
-                        number_of_videos=1,
-                        duration_seconds=video_duration,
-                        aspect_ratio=video_input.aspect_ratio or VIDEO_DEFAULT_ASPECT_RATIO,
-                        person_generation="allow_all",
-                        enhance_prompt=True,
-                        generate_audio=False,
-                        fps=VIDEO_FPS,
-                        modality=VideoModality.FIRST_FRAME,
-                        initial_frame_image=initial_frame_image,
-                        max_retries=VIDEO_GENERATION_TENACITY_ATTEMPTS,
-                        retry_delay_min=1.0,
-                        retry_delay_max=max(1.0, VIDEO_GENERATION_RETRY_DELAY_SECONDS)
-                    )
+                    # Optional heartbeat while waiting for semaphore
+                    log_message(f"Entering generation for scene {video_input.scene_number}", Severity.DEBUG)
+                    
+                    while True:
+                        try:
+                            extracted = await generate_video_bytes(
+                                client=vertex_client,
+                                model=VIDEO_GENERATION_MODEL,
+                                prompt=current_prompt,
+                                number_of_videos=1,
+                                duration_seconds=video_duration,
+                                aspect_ratio=video_input.aspect_ratio or VIDEO_DEFAULT_ASPECT_RATIO,
+                                person_generation="allow_all",
+                                enhance_prompt=True,
+                                generate_audio=False,
+                                fps=VIDEO_FPS,
+                                modality=VideoModality.FIRST_FRAME,
+                                initial_frame_image=initial_frame_image,
+                                max_retries=VIDEO_GENERATION_TENACITY_ATTEMPTS,
+                                retry_delay_min=1.0,
+                                retry_delay_max=max(1.0, VIDEO_GENERATION_RETRY_DELAY_SECONDS)
+                            )
+                            break
+                        except api_exceptions.ResourceExhausted as e:
+                            msg = "The model is facing extremely high traffic. Waiting 10 seconds before trying again..."
+                            log_message(msg, Severity.WARNING)
+                            utils_agents.geminienterprise_print(tool_context, f"⚠️ {msg}")
+                            await asyncio.sleep(10)
             
                 if extracted:
                     video_bytes, mime_type = extracted[0]
@@ -138,11 +150,17 @@ async def generate_single_video(
                     
             except ShowableException as e:
                 # Fatal safety failure or unrecoverable error.
-                log_message(f"Fatal un-retriable video error: {e.showable_message} | Unmodified Error: {e}", Severity.ERROR)
+                error_msg = f"Fatal un-retriable video error: {e.showable_message}"
+                log_message(f"{error_msg} | Unmodified Error: {e}", Severity.ERROR)
+                utils_agents.geminienterprise_print(tool_context, f"❌ Error: {error_msg}")
+                save_state_property(tool_context, ad_generation_constants.STATE_KEY_LAST_ERROR, error_msg)
                 error = e.showable_message
                 return None, error  # Break the Eval Reattempts loop to send it straight to LLM
             except Exception as e:
-                log_message(f"Unexpected video generation API failure | Unmodified Error: {e}", Severity.ERROR)
+                error_msg = f"Unexpected video generation API failure: {str(e)}"
+                log_message(f"{error_msg} | Unmodified Error: {e}", Severity.ERROR)
+                utils_agents.geminienterprise_print(tool_context, f"⚠️ Notice: {error_msg}. Retrying...")
+                save_state_property(tool_context, ad_generation_constants.STATE_KEY_LAST_ERROR, error_msg)
                 error = str(e)
 
             if error or not (video and video.video and video.video.video_bytes):
@@ -153,6 +171,7 @@ async def generate_single_video(
                 evaluation: EvalResult | None = None
                 
                 if should_run_eval:
+                    utils_agents.geminienterprise_print(tool_context, f"🔍 Evaluating generated video for scene {video_input.scene_number}...")
                     evaluation = await evaluate_media(
                         media_bytes=video.video.video_bytes, 
                         mime_type="video/mp4", 
@@ -276,7 +295,7 @@ async def generate_single_video_from_ingredients(
 
             utils_agents.geminienterprise_print(
                 tool_context,
-                f"Generating video clip for {video_input.image_identifier} using {len(video_input.reference_images) if video_input.reference_images else 0} ingredients (Attempt {attempt_idx+1})...",
+                f"Generating video clip for {video_input.image_identifier} using {len(video_input.reference_images) if video_input.reference_images else 0} ingredients (Attempt {attempt_idx+1})... This may take 1-3 minutes.",
             )
             
             error = None
@@ -285,23 +304,31 @@ async def generate_single_video_from_ingredients(
             try:
                 # We enforce the semaphore here before yielding to adk_common
                 async with video_semaphore:
-                    extracted = await generate_video_bytes(
-                        client=vertex_client,
-                        model=VIDEO_GENERATION_MODEL,
-                        prompt=current_prompt,
-                        number_of_videos=1,
-                        duration_seconds=video_duration,
-                        aspect_ratio=video_input.aspect_ratio or VIDEO_DEFAULT_ASPECT_RATIO,
-                        person_generation="allow_all",
-                        enhance_prompt=True,
-                        generate_audio=False,
-                        fps=VIDEO_FPS,
-                        modality=VideoModality.REFERENCE_IMAGES,
-                        reference_images=ref_images_api,
-                        max_retries=VIDEO_GENERATION_TENACITY_ATTEMPTS,
-                        retry_delay_min=1.0,
-                        retry_delay_max=max(1.0, VIDEO_GENERATION_RETRY_DELAY_SECONDS)
-                    )
+                    while True:
+                        try:
+                            extracted = await generate_video_bytes(
+                                client=vertex_client,
+                                model=VIDEO_GENERATION_MODEL,
+                                prompt=current_prompt,
+                                number_of_videos=1,
+                                duration_seconds=video_duration,
+                                aspect_ratio=video_input.aspect_ratio or VIDEO_DEFAULT_ASPECT_RATIO,
+                                person_generation="allow_all",
+                                enhance_prompt=True,
+                                generate_audio=False,
+                                fps=VIDEO_FPS,
+                                modality=VideoModality.REFERENCE_IMAGES,
+                                reference_images=ref_images_api,
+                                max_retries=VIDEO_GENERATION_TENACITY_ATTEMPTS,
+                                retry_delay_min=1.0,
+                                retry_delay_max=max(1.0, VIDEO_GENERATION_RETRY_DELAY_SECONDS)
+                            )
+                            break
+                        except api_exceptions.ResourceExhausted as e:
+                            msg = "The model is facing extremely high traffic. Waiting 10 seconds before trying again..."
+                            log_message(msg, Severity.WARNING)
+                            utils_agents.geminienterprise_print(tool_context, f"⚠️ {msg}")
+                            await asyncio.sleep(10)
             
                 if extracted:
                     video_bytes, mime_type = extracted[0]
@@ -312,11 +339,17 @@ async def generate_single_video_from_ingredients(
                     
             except ShowableException as e:
                 # Fatal safety failure or unrecoverable error.
-                log_message(f"Fatal un-retriable video error: {e.showable_message} | Unmodified Error: {e}", Severity.ERROR)
+                error_msg = f"Fatal un-retriable video error: {e.showable_message}"
+                log_message(f"{error_msg} | Unmodified Error: {e}", Severity.ERROR)
+                utils_agents.geminienterprise_print(tool_context, f"❌ Error: {error_msg}")
+                save_state_property(tool_context, ad_generation_constants.STATE_KEY_LAST_ERROR, error_msg)
                 error = e.showable_message
                 return None, error  # Break the Eval Reattempts loop to send it straight to LLM
             except Exception as e:
-                log_message(f"Unexpected video generation API failure | Unmodified Error: {e}", Severity.ERROR)
+                error_msg = f"Unexpected video generation API failure: {str(e)}"
+                log_message(f"{error_msg} | Unmodified Error: {e}", Severity.ERROR)
+                utils_agents.geminienterprise_print(tool_context, f"⚠️ Notice: {error_msg}. Retrying...")
+                save_state_property(tool_context, ad_generation_constants.STATE_KEY_LAST_ERROR, error_msg)
                 error = str(e)
 
             if error or not (video and video.video and video.video.video_bytes):
@@ -327,6 +360,7 @@ async def generate_single_video_from_ingredients(
                 evaluation: EvalResult | None = None
                 
                 if should_run_eval:
+                    utils_agents.geminienterprise_print(tool_context, f"🔍 Evaluating generated video for scene {video_input.scene_number}...")
                     evaluation = await evaluate_media(
                         media_bytes=video.video.video_bytes, 
                         mime_type="video/mp4", 

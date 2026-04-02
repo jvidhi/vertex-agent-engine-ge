@@ -69,7 +69,7 @@ async def generate_storyboard_image_batch(
     if not scenes:
         return "Error: No scenes found in the storyboard payload."
 
-    utils_agents.geminienterprise_print(tool_context, f"🚀 Firing off {len(scenes)} concurrent Vertex AI Image generators...")
+    utils_agents.geminienterprise_print(tool_context, f"🚀 Firing off {len(scenes)} concurrent Vertex AI Image generators... This may take 1-3 minutes.")
     
     tasks = []
     

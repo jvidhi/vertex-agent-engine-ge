@@ -56,16 +56,27 @@ def generate_asset_prompt(client, brand_info, asset_type="character"):
 
     print(f"🧠 Generating excellent {asset_type} prompt for {brand_name}...")
     
-    response = client.models.generate_content(
-        model=TEXT_MODEL_NAME,
-        contents=[instruction],
-        config=types.GenerateContentConfig(
-            temperature=0.7,
-            top_p=0.95,
-            top_k=40,
-            max_output_tokens=300,
-        )
-    )
+    while True:
+        try:
+            response = client.models.generate_content(
+                model=TEXT_MODEL_NAME,
+                contents=[instruction],
+                config=types.GenerateContentConfig(
+                    temperature=0.7,
+                    top_p=0.95,
+                    top_k=40,
+                    max_output_tokens=1000,
+                    thinking_config=types.ThinkingConfig(include_thoughts=True, thinking_budget=32000) if "thinking" in TEXT_MODEL_NAME.lower() else None
+                )
+            )
+            break
+        except Exception as e:
+            if "429" in str(e) or "Resource Exhausted" in str(e).lower() or "resource_exhausted" in str(e).lower():
+                print("⚠️ The model is facing extremely high traffic. Waiting 10 seconds before trying again...")
+                import time
+                time.sleep(10)
+            else:
+                raise e
     
     if response and response.text:
         return response.text.strip()
@@ -133,11 +144,22 @@ def generate_reference_image(client, prompt, aspect_ratio="9:16"):
             image_config=types.ImageConfig(aspect_ratio=aspect_ratio)
         )
         
-        response = client.models.generate_content(
-            model=MODEL_NAME,
-            contents=[prompt],
-            config=config
-        )
+        while True:
+            try:
+                response = client.models.generate_content(
+                    model=MODEL_NAME,
+                    contents=[prompt],
+                    config=config
+                )
+                break
+            except Exception as e:
+                # Check for 429 or Resource Exhausted in the exception message
+                if "429" in str(e) or "Resource Exhausted" in str(e).lower() or "resource_exhausted" in str(e).lower():
+                    print("⚠️ The model is facing extremely high traffic. Waiting 10 seconds before trying again...")
+                    import time
+                    time.sleep(10)
+                else:
+                    raise e
         
         if (
             response
@@ -154,15 +176,25 @@ def generate_reference_image(client, prompt, aspect_ratio="9:16"):
         
     else:
         print("ℹ️ Using Imagen API...")
-        response = client.models.generate_images(
-            model=MODEL_NAME,
-            prompt=prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio=aspect_ratio,
-                output_mime_type="image/png",
-            )
-        )
+        while True:
+            try:
+                response = client.models.generate_images(
+                    model=MODEL_NAME,
+                    prompt=prompt,
+                    config=types.GenerateImagesConfig(
+                        number_of_images=1,
+                        aspect_ratio=aspect_ratio,
+                        output_mime_type="image/png",
+                    )
+                )
+                break
+            except Exception as e:
+                if "429" in str(e) or "Resource Exhausted" in str(e).lower() or "resource_exhausted" in str(e).lower():
+                    print("⚠️ The model is facing extremely high traffic. Waiting 10 seconds before trying again...")
+                    import time
+                    time.sleep(10)
+                else:
+                    raise e
         
         if response and response.generated_images:
             for generated_image in response.generated_images:
@@ -208,6 +240,34 @@ def run_workflow(company_name, args, client):
             upload_to_gcs(BUCKET_NAME, image_bytes, f"{gcs_folder}/{brand_path}_sample_character.png", mime_type)
         except Exception as e:
             print(f"❌ Character generation failed: {e}")
+            
+        # Generate All Products mentioned in TOML
+        products = brand_info.get("products", [])
+        if products:
+            print(f"📦 Generating {len(products)} products for {company_name}...")
+            for product in products:
+                product_name = product.get("product_name", "Unknown Product")
+                product_guidelines = product.get("product_guidelines")
+                product_url = product.get("product_image_url", "")
+                
+                if not product_guidelines:
+                    print(f"⚠️ Skipping {product_name}: No product_guidelines found.")
+                    continue
+                
+                # Extract filename from URL
+                if product_url:
+                    # e.g. https://storage.cloud.google.com/bucket/brand_configs/brand/file.png -> file.png
+                    filename_from_url = os.path.basename(product_url)
+                    dest_blob = f"{gcs_folder}/{filename_from_url}"
+                else:
+                    dest_blob = f"{gcs_folder}/{product_name.lower().replace(' ', '_')}.png"
+
+                print(f"🖼️ Generating product: {product_name}...")
+                try:
+                    image_bytes, mime_type = generate_reference_image(client, product_guidelines, aspect_ratio="9:16")
+                    upload_to_gcs(BUCKET_NAME, image_bytes, dest_blob, mime_type)
+                except Exception as e:
+                    print(f"❌ Product generation failed for {product_name}: {e}")
         
         return
 

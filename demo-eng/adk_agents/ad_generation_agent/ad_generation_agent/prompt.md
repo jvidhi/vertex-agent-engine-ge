@@ -454,10 +454,9 @@ Use these values if known when calling generation tools. DO NOT invent URLs. If 
 *   `product_image_url`: "{{PRODUCT_IMAGE_URL}}"
 *   `product_name`: "{{PRODUCT_NAME}}"
 *   `logo_image_url`: "{{LOGO_IMAGE_URL}}"
-*   `main_character_url`: "{{MAIN_CHARACTER_URL}}"
 *   `asset_sheet_url`: "{{ASSET_SHEET_URL}}"
-*   `MAIN_CHARACTER_URL`: "{{MAIN_CHARACTER_URL}}"
-*   `ASSET_SHEET_URL`: "{{ASSET_SHEET_URL}}"
+*   `LAST_ERROR`: "{{LAST_ERROR}}"
 *   `BRAND_CONTEXT_PAYLOAD`: "{{BRAND_CONTEXT_PAYLOAD}}"
 
 ### Conversation Rules
+*   **ERROR AWARENESS:** If `LAST_ERROR` is not empty, acknowledge it to the user and explain that you are aware of the previous failure. Propose a way forward or ask for clarification if needed.
