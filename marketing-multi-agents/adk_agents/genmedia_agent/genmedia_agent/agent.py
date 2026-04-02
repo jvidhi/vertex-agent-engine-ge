@@ -16,14 +16,15 @@
 
 import json
 import sys
+import os
 import traceback
 from typing import Any, List, Optional
+import vertexai
 
 import requests
 from adk_common.dtos.agent_tool_response import (
     AgentToolResponse, AgentToolResponseGenMedia, Status)
 from adk_common.dtos.errors import ShowableException
-from adk_common.dtos.generated_media import GeneratedMedia
 from adk_common.dtos.generated_media import GeneratedMedia
 from adk_common.media_generation.image_generation import (text_and_image_to_image,
                                                        text_to_image)
@@ -44,6 +45,11 @@ from pydantic import ValidationError
 
 # Environment Variables
 GOOGLE_CLOUD_PROJECT = get_required_env_var("GOOGLE_CLOUD_PROJECT")
+MODELS_CLOUD_LOCATION = get_required_env_var("MODELS_CLOUD_LOCATION")
+
+# Set the environment variable so google.genai and google.adk pick up the right location
+os.environ["GOOGLE_CLOUD_LOCATION"] = MODELS_CLOUD_LOCATION
+
 GOOGLE_CLOUD_BUCKET_ARTIFACTS = get_required_env_var("GOOGLE_CLOUD_BUCKET_ARTIFACTS")
 AGENT_VERSION = get_required_env_var("AGENT_VERSION")
 IS_DEBUG_ON = get_optional_env_var("IS_DEBUG_ON", "False").lower() in ("true", "1", "t")
@@ -349,7 +355,6 @@ async def _generate_video_from_text_or_image(
         from datetime import datetime
         import mimetypes
         
-        MODELS_CLOUD_LOCATION = get_required_env_var("MODELS_CLOUD_LOCATION")
         client = genai.Client(
             vertexai=True,
             project=GOOGLE_CLOUD_PROJECT,
@@ -441,6 +446,11 @@ agent_tools = [
 
 if IS_DEBUG_ON:
     agent_tools.append(_debug)
+
+vertexai.init(
+    project=GOOGLE_CLOUD_PROJECT,
+    location=MODELS_CLOUD_LOCATION,
+)
 
 genmedia_agent = LlmAgent(
     model=LLM_GEMINI_MODEL_GENMEDIA,
